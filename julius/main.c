@@ -95,7 +95,9 @@ main(int argc, char *argv[])
   /* add application options */
   record_add_option();
   module_add_option();
+#ifdef CHARACTER_CONVERSION 
   charconv_add_option();
+#endif
   j_add_option("-separatescore", 0, 0, "output AM and LM scores separately", opt_separatescore);
   j_add_option("-logfile", 1, 1, "output log to file", opt_logfile);
   j_add_option("-nolog", 0, 0, "not output any log", opt_nolog);
@@ -163,10 +165,12 @@ main(int argc, char *argv[])
   
   /* Set up some application functions */
   /* set character conversion mode */
+#ifdef CHARACTER_CONVERSION 
   if (charconv_setup() == FALSE) {
     if (logfile) fclose(fp);
     return -1;
   }
+#endif
   if (is_module_mode()) {
     /* set up for module mode */
     /* register result output callback functions to network module */
