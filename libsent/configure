@@ -2759,7 +2759,7 @@ EOF
 #	;;
     *)
 	aldesc="no support"
-	{ echo "configure: error: mictype not supported, or specified type not exist" 1>&2; exit 1; }
+#	{ echo "configure: error: mictype not supported, or specified type not exist" 1>&2; exit 1; }
 	;;
 esac
 

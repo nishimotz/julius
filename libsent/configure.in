@@ -429,7 +429,7 @@ case $altype in
 #	;;
     *)
 	aldesc="no support"
-	AC_MSG_ERROR([mictype not supported, or specified type not exist])
+#	AC_MSG_ERROR([mictype not supported, or specified type not exist])
 	;;
 esac
 
