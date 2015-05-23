@@ -1,5 +1,5 @@
 /* Version string */
-#define LIBSENT_VERSION "4.1.2"
+#define LIBSENT_VERSION "4.2.3"
 
 /* Audio API name */
 #define AUDIO_API_NAME "pa-dsound"
@@ -100,5 +100,23 @@
 /* Define if <esd.h> exist  */
 #undef HAVE_ESD_H
 
+/* Define if <pulse/simple.h> exist  */
+#undef HAVE_PULSE_SIMPLE_H
+
+/* Define if enable alsa */
+#undef HAS_ALSA
+
+/* Define if enable oss */
+#undef HAS_OSS
+
+/* Define if enable pulseaudio */
+#undef HAS_PULSEAUDIO
+
+/* Define if enable esd */
+#undef HAS_ESD
+
 /* Define if MSD-HMM support is enabled */
 #undef ENABLE_MSD
+
+/* Define if MBR support is enabled */
+#undef USE_MBR

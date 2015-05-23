@@ -22,16 +22,16 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 06:03:36 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.9 $
  * 
  */
 /*
  * Copyright (c) 2003-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
-/* $Id: write_binhmm.c,v 1.4 2008/07/07 05:50:11 sumomo Exp $ */
+/* $Id: write_binhmm.c,v 1.9 2013/12/18 03:55:21 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_param.h>
@@ -146,8 +146,8 @@ wt_para(FILE *fp, Value *para)
   version = VALUE_VERSION;
   wrt(fp, &version, sizeof(short), 1);
 
-  wrt(fp, &(para->smp_period), sizeof(long), 1);      
-  wrt(fp, &(para->smp_freq), sizeof(long), 1);	
+  wrt(fp, &(para->smp_period), sizeof(int), 1);      
+  wrt(fp, &(para->smp_freq), sizeof(int), 1);	
   wrt(fp, &(para->framesize), sizeof(int), 1);        
   wrt(fp, &(para->frameshift), sizeof(int), 1);       
   wrt(fp, &(para->preEmph), sizeof(float), 1);        
@@ -823,8 +823,9 @@ static unsigned int st_num;	///< Length of above
 static int
 qsort_st_index(HTK_HMM_State **s1, HTK_HMM_State **s2)
 {
-  if (*s1 > *s2) return 1;
-  else if (*s1 < *s2) return -1;
+  /* keep ID order */
+  if ((*s1)->id > (*s2)->id) return 1;
+  else if ((*s1)->id < (*s2)->id) return -1;
   else return 0;
 }
 
@@ -918,7 +919,8 @@ search_stid(HTK_HMM_State *s)
 
   while (left < right) {
     mid = (left + right) / 2;
-    if (st_index[mid] < s) {
+    /* search by id */
+    if (st_index[mid]->id < s->id) {
       left = mid + 1;
     } else {
       right = mid;

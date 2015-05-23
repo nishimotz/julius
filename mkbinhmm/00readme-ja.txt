@@ -29,16 +29,16 @@ DESCRIPTION
 
 OPTIONS
         -htkconf  HTKConfigFile
-          学習時に特徴量抽出に使用したHTK Configファイルを指定する．指定さ れ
-          た場合，その中の設定値が出力ファイルのヘッダに埋め込まれる． 入力に
-          既にヘッダがある場合上書きされる．
+           学習時に特徴量抽出に使用したHTK Configファイルを指定する．指定さ れ
+           た場合，その中の設定値が出力ファイルのヘッダに埋め込まれる． 入力に
+           既にヘッダがある場合上書きされる．
 
        hmmdefs_file
-          変換元の音響モデル定義ファイル (MMF)．HTK ASCII 形式，あるいは
-          Julius バイナリ形式．
+           変換元の音響モデル定義ファイル (MMF)．HTK ASCII 形式，あるいは
+           Julius バイナリ形式．
 
        hmmdefs_file
-          Julius用バイナリ形式ファイルの出力先．
+           Julius用バイナリ形式ファイルの出力先．
 
 EXAMPLES
        HTK ASCII 形式の HMM 定義をバイナリ形式に変換する：
@@ -50,17 +50,17 @@ SEE ALSO
         mkbingram ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1991-2008 京都大学 河原研究室
+       Copyright (c) 1991-2013 京都大学 河原研究室
 
        Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
 
-       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+       Copyright (c) 2000-2005 奈良先端科学技術大学院大学 鹿野研究室
 
-       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
+       Copyright (c) 2005-2013 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-                                  10/02/2008                       MKBINHMM(1)
+                                  19/12/2013                       MKBINHMM(1)

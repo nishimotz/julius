@@ -16,13 +16,13 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 19:36:47 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.12 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -40,7 +40,7 @@
 #define NoTokErr(S)      if (!rdhmmdef_token) rderr(S)
 
 /// Delimiter string for parsing %HMM definition file
-#define HMMDEF_DELM " \t\n<>"
+#define HMMDEF_DELM " \t\r\n<>"
 
 /**
  * @defgroup hmminfo HTK HMM definition
@@ -112,6 +112,7 @@ typedef struct _HTK_HMM_trans {
   char *name;			///< Name (NULL if not defined as Macro)
   short statenum;		///< Number of state
   PROB **a;			///< Matrix of transition probabilities
+  int id; 			///< Uniq transition id starting from 0
   struct _HTK_HMM_trans *next;  ///< Pointer to next data, NULL if last
 } HTK_HMM_Trans;
 
@@ -266,6 +267,7 @@ typedef struct _cd_set{
 } CD_Set;
 /// Top structure to hold all the %HMM sets
 typedef struct {
+  boolean binary_malloc;	///< TRUE if read from binary
   APATNODE *cdtree;		///< Root of index tree for name lookup
 } HMM_CDSET_INFO;
 //@}
@@ -389,6 +391,7 @@ typedef struct {
   LOGPROB iwsp_penalty;		///< Extra ransition penalty for interword skippable short pause insertion for multi-path mode
   boolean variance_inversed;	///< TRUE if variances are inversed
   
+  int totaltransnum;		///< Total number of transitions
   int totalmixnum;		///< Total number of defined mixtures
   int totalstatenum;		///< Total number of states
   int totalhmmnum;		///< Total number of physical %HMM
@@ -410,6 +413,8 @@ typedef struct {
   boolean has_msd;		///< TRUE if this model contains MSD part
 #endif
 
+  void *hook;			///< General purpose hook
+
   //@}
 } HTK_HMM_INFO;
 
@@ -428,6 +433,7 @@ void htk_hmm_inverse_variances(HTK_HMM_INFO *hmm);
 #ifdef ENABLE_MSD
 void htk_hmm_check_msd(HTK_HMM_INFO *hmm);
 #endif
+boolean htk_hmm_check_sid(HTK_HMM_INFO *hmm);
 /* rdhmmdef_options.c */
 boolean set_global_opt(FILE *fp, HTK_HMM_INFO *hmm);
 char *get_cov_str(short covtype);

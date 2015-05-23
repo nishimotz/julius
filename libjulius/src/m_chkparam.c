@@ -20,13 +20,13 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:31:45 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.9 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -214,7 +214,7 @@ j_jconf_finalize(Jconf *jconf)
   if (jconf->reject.gmm_filename != NULL) 
     if (!checkpath(jconf->reject.gmm_filename)) ok_p = FALSE;
   if (jconf->input.inputlist_filename != NULL) {
-    if (jconf->input.speech_input != SP_RAWFILE && jconf->input.speech_input != SP_MFCFILE) {
+    if (jconf->input.speech_input != SP_RAWFILE && jconf->input.speech_input != SP_MFCFILE && jconf->input.speech_input != SP_OUTPROBFILE) {
       jlog("WARNING: m_chkparam: not file input, \"-filelist %s\" ignored\n", jconf->input.inputlist_filename);
     } else {
       if (!checkpath(jconf->input.inputlist_filename)) ok_p = FALSE;

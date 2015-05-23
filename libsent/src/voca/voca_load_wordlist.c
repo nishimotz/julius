@@ -13,13 +13,13 @@
  * @author Akinobu LEE
  * @date   Sun Jul 22 13:29:32 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.12 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -202,7 +202,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
   static char cbuf[MAX_HMMNAME_LEN];
   static HMM_Logical **tmpwseq = NULL;
   static int tmpmaxlen;
-  int len;
+  int i, len;
   HMM_Logical *tmplg;
   boolean pok, first;
   int vnum;
@@ -300,12 +300,58 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
     ptmp = winfo->wname[vnum];
   }
   if (ptmp == NULL) {
-    jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+    jlog("Error: voca_load_wordlist: line %d: corrupted data:\n> %s\n", linenum, bufbak);
     winfo->errnum++;
     *ok_flag = FALSE;
     return TRUE;
   }
   winfo->woutput[vnum] = strcpy((char *)mybmalloc2(strlen(ptmp)+1, &(winfo->mroot)), ptmp);
+
+#ifdef USE_MBR
+  /* just move pointer to next token */
+  if ((ptmp = mystrtok_movetonext(NULL, " \t\n")) == NULL) {
+    jlog("Error: voca_load_wordlist: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+    winfo->errnum++;
+    *ok_flag = FALSE;
+    return TRUE;
+  }
+
+  if (ptmp[0] == ':') {        /* Word weight (use minimization WWER on MBR) */
+
+    /* Word weight (use minimization WWER on MBR) */
+    /* format: (classname @classprob) wordname [output] :weight phoneseq */
+    /* format: :%f (linear scale) */
+    /* if ":" not found, it means weight == 1.0 (same minimization WER) */
+
+    if ((ptmp = mystrtok(NULL, " \t\n")) == NULL) {
+      jlog("Error: voca_load_wordlist: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+      winfo->errnum++;
+      *ok_flag = FALSE;
+      return TRUE;
+    }
+    if ((ptmp[1] < '0' || ptmp[1] > '9') && ptmp[1] != '.') {     /* not figure after ':' */
+      jlog("Error: voca_load_wordlist: line %d: value after ':' missing, maybe wrong space?\n> %s\n", linenum, bufbak);
+      winfo->errnum++;
+      *ok_flag = FALSE;
+      return TRUE;
+    }
+
+    /* allocate if not yet */
+    if (winfo->weight == NULL) {
+      winfo->weight = (LOGPROB *)mymalloc(sizeof(LOGPROB) * winfo->maxnum);
+      for (i = 0; i < vnum; i++) {
+	winfo->weight[i] = 1.0;
+      }
+    }
+
+    winfo->weight[vnum] = atof(&(ptmp[1]));
+  }
+  else{
+    if (winfo->weight) 
+      winfo->weight[vnum] = 1.0; /* default, same minimization WER */
+  }
+#endif
+
     
   /* phoneme sequence */
   if (hmminfo == NULL) {
@@ -325,12 +371,24 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
 	  cycle_triphone(NULL);
 	  /* insert head phone at beginning of word */
 	  if (contextphone) {
+	    if (strlen(contextphone) >= MAX_HMMNAME_LEN) {
+	      jlog("Error: voca_load_wordlist: line %d: too long phone name: %s\n", linenum, contextphone);
+	      winfo->errnum++;
+	      *ok_flag = FALSE;
+	      return TRUE;
+	    }
 	    cycle_triphone(contextphone);
 	  } else {
 	    cycle_triphone("NULL_C");
 	  }
 	  if ((lp = mystrtok(NULL, " \t\n")) == NULL) {
 	    jlog("Error: voca_load_wordlist: line %d: word %s has no phoneme:\n> %s\n", linenum, winfo->wname[vnum], bufbak);
+	    winfo->errnum++;
+	    *ok_flag = FALSE;
+	    return TRUE;
+	  }
+	  if (strlen(lp) >= MAX_HMMNAME_LEN) {
+	    jlog("Error: voca_load_wordlist: line %d: too long phone name: %s\n", linenum, lp);
 	    winfo->errnum++;
 	    *ok_flag = FALSE;
 	    return TRUE;
@@ -342,10 +400,22 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
 	    lp = mystrtok(NULL, " \t\n");
 	    if (lp != NULL) {
 	      /* token exist */
+	      if (strlen(lp) >= MAX_HMMNAME_LEN) {
+		jlog("Error: voca_load_wordlist: line %d: too long phone name: %s\n", linenum, lp);
+		winfo->errnum++;
+		*ok_flag = FALSE;
+		return TRUE;
+	      }
 	      p = cycle_triphone(lp);
 	    } else {
 	      /* no more token, insert tail phone at end of word */
 	      if (contextphone) {
+		if (strlen(contextphone) >= MAX_HMMNAME_LEN) {
+		  jlog("Error: voca_load_wordlist: line %d: too long phone name: %s\n", linenum, contextphone);
+		  winfo->errnum++;
+		  *ok_flag = FALSE;
+		  return TRUE;
+		}
 		p = cycle_triphone(contextphone);
 	      } else {
 		p = cycle_triphone("NULL_C");

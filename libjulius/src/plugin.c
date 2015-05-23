@@ -12,13 +12,13 @@
  * @author Akinobu Lee
  * @date   Sat Aug  2 09:46:09 2008
  * 
- * $Revision: 1.5 $
+ * $Revision: 1.11 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -81,6 +81,8 @@ plugin_free_all()
   PLUGIN_ENTRY *p, *ptmp;
   int i, num;
 
+  if (global_plugin_list == NULL) return;
+
   num = plugin_namelist_num();
   for(i=0;i<num;i++) {
     p = global_plugin_list[i];
@@ -91,6 +93,7 @@ plugin_free_all()
     }
   }
   free(global_plugin_list);
+  global_plugin_list = NULL;
 }    
 
 
@@ -98,6 +101,7 @@ int
 plugin_get_id(char *name)
 {
   int i, num;
+
   num = plugin_namelist_num();
   for(i=0;i<num;i++) {
     if (strmatch(plugin_function_namelist[i], name)) {
@@ -336,8 +340,9 @@ plugin_find_optname(char *optfuncname, char *str)
   PLUGIN_ENTRY *p;
   FUNC_VOID func;
 
-  if ((id = plugin_get_id(optfuncname)) < 0) return -1;
+  if (global_plugin_list == NULL) return -1;
 
+  if ((id = plugin_get_id(optfuncname)) < 0) return -1;
   for(p=global_plugin_list[id];p;p=p->next) {
     func = (FUNC_VOID) p->func;
     (*func)(buf, (int)64);
@@ -354,6 +359,8 @@ plugin_get_func(int sid, char *name)
   int id;
   PLUGIN_ENTRY *p;
   FUNC_VOID func;
+
+  if (global_plugin_list == NULL) return NULL;
 
   if ((id = plugin_get_id(name)) < 0) return NULL;
 
@@ -516,11 +523,21 @@ plugin_exec_process_result(Recog *recog)
 boolean
 mfc_module_init(MFCCCalc *mfcc, Recog *recog)
 {
+  /* assign default functions */
+  mfcc->func.fv_standby    = (boolean (*)()) vecin_standby;
+  mfcc->func.fv_begin      = (boolean (*)()) vecin_open;
+  mfcc->func.fv_read       = (int (*)(VECT *, int)) vecin_read;
+  mfcc->func.fv_end        = (boolean (*)()) vecin_close;
+  mfcc->func.fv_resume     = (boolean (*)()) vecin_resume;
+  mfcc->func.fv_pause      = (boolean (*)()) vecin_pause;
+  mfcc->func.fv_terminate  = (boolean (*)()) vecin_terminate;
+  mfcc->func.fv_input_name = (char * (*)()) vecin_input_name;
+
 #ifdef ENABLE_PLUGIN
   mfcc->plugin_source = recog->jconf->input.plugin_source;
   if (mfcc->plugin_source < 0) {
-    jlog("ERROR: SP_MDCMODULE selected but plugin is missing?\n");
-    return FALSE;
+    /* no plugin, use the default functions */
+    return TRUE;
   }
   mfcc->func.fv_standby  = (boolean (*)()) plugin_get_func(mfcc->plugin_source, "fvin_standby");
   mfcc->func.fv_begin    = (boolean (*)()) plugin_get_func(mfcc->plugin_source, "fvin_open");
@@ -532,7 +549,7 @@ mfc_module_init(MFCCCalc *mfcc, Recog *recog)
   mfcc->func.fv_input_name= (char * (*)()) plugin_get_func(mfcc->plugin_source, "fvin_input_name");
 
   if (mfcc->func.fv_read == NULL) {
-    jlog("ERROR: FEATURE_INPUT plugin: fvin_read() not found!\n");
+    jlog("ERROR: FEATURE_INPUT: fvin_read() not found!\n");
     return FALSE;
   }
 #endif
@@ -547,11 +564,19 @@ mfc_module_set_header(MFCCCalc *mfcc, Recog *recog)
   unsigned int ret;
 
 #ifdef ENABLE_PLUGIN
-  func = (FUNC_INT) plugin_get_func(mfcc->plugin_source, "fvin_get_configuration");
-  if (func == NULL) {
-    jlog("ERROR: feature vector input plugin: fvin_get_configuration() not found\n");
-    return FALSE;
+  if (mfcc->plugin_source < 0) {
+    /* no plugin, use the default functions */
+    func = vecin_get_configuration;
+  } else {
+    func = (FUNC_INT) plugin_get_func(mfcc->plugin_source, "fvin_get_configuration");
+    if (func == NULL) {
+      jlog("ERROR: feature vector input: fvin_get_configuration() not found\n");
+      return FALSE;
+    }
   }
+#else
+  func = vecin_get_configuration;
+#endif
 
   /* vector length in unit */
   mfcc->param->veclen = (*func)(0);
@@ -566,7 +591,9 @@ mfc_module_set_header(MFCCCalc *mfcc, Recog *recog)
   } else {
     mfcc->param->header.samptype = ret;
   }
-#endif
+
+  /* switch if the input vector is feature vector or outprob vector */
+  mfcc->param->is_outprob = ( (*func)(3) > 0 ) ? TRUE : FALSE;
 
   return TRUE;
 }
@@ -574,7 +601,6 @@ mfc_module_set_header(MFCCCalc *mfcc, Recog *recog)
 boolean
 mfc_module_standby(MFCCCalc *mfcc)
 {
-#ifdef ENABLE_PLUGIN
   FUNC_INT func;
   int ret;
 
@@ -582,15 +608,11 @@ mfc_module_standby(MFCCCalc *mfcc)
   else ret = TRUE;
   mfcc->segmented_by_input = FALSE;
   return ret;
-#else
-  return TRUE;
-#endif
 }
 
 boolean
 mfc_module_begin(MFCCCalc *mfcc)
 {
-#ifdef ENABLE_PLUGIN
   FUNC_INT func;
   int ret;
 
@@ -599,15 +621,11 @@ mfc_module_begin(MFCCCalc *mfcc)
   if (mfcc->func.fv_begin) ret = mfcc->func.fv_begin();
   else ret = TRUE;
   return ret;
-#else
-  return TRUE;
-#endif
 }
 
 boolean
 mfc_module_end(MFCCCalc *mfcc)
 {
-#ifdef ENABLE_PLUGIN
   FUNC_INT func;
   int ret;
 
@@ -616,21 +634,17 @@ mfc_module_end(MFCCCalc *mfcc)
   if (mfcc->func.fv_end) ret = mfcc->func.fv_end();
   else ret = TRUE;
   return ret;
-#else
-  return TRUE;
-#endif
 }
 
 int
 mfc_module_read(MFCCCalc *mfcc, int *new_t)
 {
-#ifdef ENABLE_PLUGIN
   FUNC_INT func;
   int ret;
 
   /* expand area if needed */
   if (param_alloc(mfcc->param, mfcc->f + 1, mfcc->param->veclen) == FALSE) {
-    jlog("ERROR: FEATURE_INPUT plugin: failed to allocate memory\n");
+    jlog("ERROR: FEATURE_INPUT: failed to allocate memory\n");
     return -2;
   }
   /* get data */
@@ -647,12 +661,11 @@ mfc_module_read(MFCCCalc *mfcc, int *new_t)
     return -1;
   } else if (ret == -2) {
     /* error */
-    jlog("ERROR: FEATURE_INPUT plugin: fvin_read() returns error (-2)\n");
+    jlog("ERROR: FEATURE_INPUT: fvin_read() returns error (-2)\n");
     return -2;
   }
     
   *new_t = mfcc->f + 1;
-#endif
 
   return 0;
 }  
@@ -660,11 +673,9 @@ mfc_module_read(MFCCCalc *mfcc, int *new_t)
 char *
 mfc_module_input_name(MFCCCalc *mfcc)
 {
-#ifdef ENABLE_PLUGIN
   int ret;
 
   if (mfcc->func.fv_input_name) return(mfcc->func.fv_input_name());
-#endif
   return NULL;
 }
 

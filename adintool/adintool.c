@@ -35,13 +35,13 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.21 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2001-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -55,7 +55,7 @@ static int file_counter = 0;	///< num of input files (for SP_RAWFILE)
 static int sfreq;		///< Temporal storage of sample rate
 
 /* output */
-enum{SPOUT_FILE, SPOUT_STDOUT, SPOUT_ADINNET}; ///< value for speech_output
+enum{SPOUT_FILE, SPOUT_STDOUT, SPOUT_ADINNET, SPOUT_VECTORNET}; ///< value for speech_output
 static int speech_output = SPOUT_FILE; ///< output device
 static int total_speechlen;	///< total samples of recorded segments
 static int speechlen;		///< samples of one recorded segments
@@ -65,6 +65,8 @@ static FILE *fp = NULL;		///< File pointer for WAV output
 static int  size;		///< Output file size
 static boolean use_raw = FALSE;	///< Output in RAW format if TRUE
 static boolean continuous_segment = TRUE; ///< enable/disable successive output
+static short vecnet_paramtype = F_ERR_INVALID; ///< output parameter type
+static int vecnet_veclen = 0;	///< output vector dimension
 static int startid = 0;		///< output file numbering variable
 static int sid = 0;		///< current file ID (for SPOUT_FILE)
 static char *outpath = NULL;	///< work space for output file name formatting
@@ -102,10 +104,11 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
   fprintf(stderr, "    file        speech file (filename given from prompt)\n");
   fprintf(stderr, "    adinnet     from adinnet client (I'm server)\n");
   fprintf(stderr, "    stdin       standard tty input\n");
-  fprintf(stderr, "    (\"-input xxx\" can be used instead, as same as Julius)\n");
+  fprintf(stderr, "  (other input can be specified by \"-input xxx\" as in Julius)\n");
   fprintf(stderr, "outputdev: output data to:\n");
   fprintf(stderr, "    file        speech file (\"foo.0000.wav\" - \"foo.N.wav\"\n");
   fprintf(stderr, "    adinnet     to adinnet server (I'm client)\n");
+  fprintf(stderr, "    vecnet      to vecnet server as feature vector (I'm client)\n");
   fprintf(stderr, "    stdout      standard tty output\n");
   
   fprintf(stderr, "I/O options:\n");
@@ -118,21 +121,32 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
   fprintf(stderr, "    -filename foo   (file-out) filename to record\n");
   fprintf(stderr, "    -startid id     (file-out) recording start id (%04d)\n", startid);
 
+  fprintf(stderr, "Feature extraction options (other than in jconf):\n");
+  fprintf(stderr, "    -paramtype desc     parameter type in HTK format\n");
+  fprintf(stderr, "    -veclen num         total vector length\n");
+  
   fprintf(stderr, "Recording and Pause segmentation options:\n");
+
+  fprintf(stderr, " (input segmentation: on for file/mic/stdin, off for adinnet)\n");
   fprintf(stderr, "  [-nosegment]          not segment input speech\n");
+  fprintf(stderr, "  [-segment]            force segmentation of input speech\n");
+  fprintf(stderr, "  [-cutsilence]         (same as \"-segment\")\n");
   fprintf(stderr, "  [-oneshot]            record only the first segment\n");
-  fprintf(stderr, "  [-freq frequency]     sampling frequency in Hz    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(stderr, "  [-freq frequency]     sampling frequency in Hz    (%d)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "  [-48]                 48000Hz recording with down sampling (16kHz only)\n");
   fprintf(stderr, "  [-lv unsignedshort]   silence cut level threshold (%d)\n", jconf->detect.level_thres);
   fprintf(stderr, "  [-zc zerocrossnum]    silence cut zerocross num   (%d)\n", jconf->detect.zero_cross_num);
   fprintf(stderr, "  [-headmargin msec]    head margin length          (%d)\n", jconf->detect.head_margin_msec);
   fprintf(stderr, "  [-tailmargin msec]    tail margin length          (%d)\n", jconf->detect.tail_margin_msec);
+  fprintf(stderr, "  [-chunksize sample]   chunk size for processing   (%d)\n", jconf->detect.chunk_size);
   fprintf(stderr, "  [-nostrip]            do not strip zero samples\n");
   fprintf(stderr, "  [-zmean]              remove DC by zero mean\n");
   fprintf(stderr, "  [-raw]                output in RAW format\n");
   fprintf(stderr, "  [-autopause]          automatically pause at each input end\n");
   fprintf(stderr, "  [-loosesync]          loose sync of resume among servers\n");
   fprintf(stderr, "  [-rewind msec]        rewind input if spoken while pause at resume\n");
+  fprintf(stderr, "  [-C jconffile]        load jconf to set parameters (ignore other options\n");
+  
   fprintf(stderr, "\nLibrary configuration: ");
   confout_version(stderr);
   confout_audio(stderr);
@@ -162,6 +176,7 @@ opt_in(Jconf *jconf, char *arg[], int argnum)
     break;
   case 's':
     jconf->input.speech_input = SP_STDIN;
+    jconf->detect.silence_cut = 1;
     break;
   case 'a':
     jconf->input.speech_input = SP_ADINNET;
@@ -193,6 +208,9 @@ opt_out(Jconf *jconf, char *arg[], int argnum)
   case 'a':
     speech_output = SPOUT_ADINNET;
     break;
+  case 'v':
+    speech_output = SPOUT_VECTORNET;
+    break;
   default:
     fprintf(stderr,"Error: no such output device: %s\n", arg[0]);
     return FALSE;
@@ -203,7 +221,7 @@ static boolean
 opt_server(Jconf *jconf, char *arg[], int argnum)
 {
   char *p, *q;
-  if (speech_output == SPOUT_ADINNET) {
+  if (speech_output == SPOUT_ADINNET || speech_output == SPOUT_VECTORNET) {
     p = (char *)malloc(strlen(arg[0]) + 1);
     strcpy(p, arg[0]);
     for (q = strtok(p, ","); q; q = strtok(NULL, ",")) {
@@ -217,7 +235,7 @@ opt_server(Jconf *jconf, char *arg[], int argnum)
     }
     free(p);
   } else {
-    fprintf(stderr, "Warning: server [%s] should be with adinnet\n", arg[0]);
+    fprintf(stderr, "Warning: server [%s] should be used with adinnet / vecnet\n", arg[0]);
     return FALSE;
   }
   return TRUE;
@@ -270,6 +288,24 @@ opt_filename(Jconf *jconf, char *arg[], int argnum)
   return TRUE;
 }
 static boolean
+opt_paramtype(Jconf *jconf, char *arg[], int argnum)
+{
+  short code;
+
+  vecnet_paramtype = param_str2code(arg[0]);
+
+  return TRUE;
+}
+static boolean
+opt_veclen(Jconf *jconf, char *arg[], int argnum)
+{
+  short code;
+  
+  vecnet_veclen = atoi(arg[0]);
+
+  return TRUE;
+}
+static boolean
 opt_startid(Jconf *jconf, char *arg[], int argnum)
 {
   startid = atoi(arg[0]);
@@ -286,6 +322,12 @@ static boolean
 opt_nosegment(Jconf *jconf, char *arg[], int argnum)
 {
   jconf->detect.silence_cut = 0;
+  return TRUE;
+}
+static boolean
+opt_segment(Jconf *jconf, char *arg[], int argnum)
+{
+  jconf->detect.silence_cut = 1;
   return TRUE;
 }
 static boolean
@@ -335,9 +377,9 @@ put_status(Recog *recog)
   int i;
   Jconf *jconf = recog->jconf;
 
-  fprintf(stderr,"----\n");
-  fprintf(stderr, "Input stream:\n");
-  fprintf(stderr, "\t             input type = ");
+  fprintf(stderr, "----------------------------------------\n");
+  fprintf(stderr, "INPUT\n");
+  fprintf(stderr, "\t   InputType: ");
   switch(jconf->input.type) {
   case INPUT_WAVEFORM:
     fprintf(stderr, "waveform\n");
@@ -346,13 +388,15 @@ put_status(Recog *recog)
     fprintf(stderr, "feature vector sequence\n");
     break;
   }
-  fprintf(stderr, "\t           input source = ");
+  fprintf(stderr, "\t InputSource: ");
   if (jconf->input.plugin_source != -1) {
     fprintf(stderr, "plugin\n");
   } else if (jconf->input.speech_input == SP_RAWFILE) {
     fprintf(stderr, "waveform file\n");
   } else if (jconf->input.speech_input == SP_MFCFILE) {
     fprintf(stderr, "feature vector file (HTK format)\n");
+  } else if (jconf->input.speech_input == SP_OUTPROBFILE) {
+    fprintf(stderr, "output probability file (HTK format)\n");
   } else if (jconf->input.speech_input == SP_STDIN) {
     fprintf(stderr, "standard input\n");
   } else if (jconf->input.speech_input == SP_ADINNET) {
@@ -371,16 +415,17 @@ put_status(Recog *recog)
 #endif
   } else if (jconf->input.speech_input == SP_MIC) {
     fprintf(stderr, "microphone\n");
-    fprintf(stderr, "\t    device API          = ");
+    fprintf(stderr, "\t   DeviceAPI: ");
     switch(jconf->input.device) {
     case SP_INPUT_DEFAULT: fprintf(stderr, "default\n"); break;
     case SP_INPUT_ALSA: fprintf(stderr, "alsa\n"); break;
     case SP_INPUT_OSS: fprintf(stderr, "oss\n"); break;
     case SP_INPUT_ESD: fprintf(stderr, "esd\n"); break;
+    case SP_INPUT_PULSEAUDIO: fprintf(stderr, "pulseaudio\n"); break;
     }
   }
 
-  fprintf(stderr,"Segmentation: ");
+  fprintf(stderr, "\tSegmentation: ");
   if (jconf->detect.silence_cut) {
     if (continuous_segment) {
       fprintf(stderr,"on, continuous\n");
@@ -388,45 +433,48 @@ put_status(Recog *recog)
       fprintf(stderr,"on, only one snapshot\n");
     }
     if (recog->adin->down_sample) {
-      fprintf(stderr,"  SampleRate: 48000Hz -> %d Hz\n", sfreq);
+      fprintf(stderr, "\t  SampleRate: 48000Hz -> %d Hz\n", sfreq);
     } else {
-      fprintf(stderr,"  SampleRate: %d Hz\n", sfreq);
+      fprintf(stderr, "\t  SampleRate: %d Hz\n", sfreq);
     }
-    fprintf(stderr,"       Level: %d / 32767\n", jconf->detect.level_thres);
-    fprintf(stderr,"   ZeroCross: %d per sec.\n", jconf->detect.zero_cross_num);
-    fprintf(stderr,"  HeadMargin: %d msec.\n", jconf->detect.head_margin_msec);
-    fprintf(stderr,"  TailMargin: %d msec.\n", jconf->detect.tail_margin_msec);
+    fprintf(stderr, "\t       Level: %d / 32767\n", jconf->detect.level_thres);
+    fprintf(stderr, "\t   ZeroCross: %d per sec.\n", jconf->detect.zero_cross_num);
+    fprintf(stderr, "\t  HeadMargin: %d msec.\n", jconf->detect.head_margin_msec);
+    fprintf(stderr, "\t  TailMargin: %d msec.\n", jconf->detect.tail_margin_msec);
   } else {
     fprintf(stderr,"OFF\n");
   }
   if (jconf->preprocess.strip_zero_sample) {
-    fprintf(stderr,"  ZeroFrames: drop\n");
+    fprintf(stderr, "\t  ZeroFrames: drop\n");
   } else {
-    fprintf(stderr,"  ZeroFrames: keep\n");
+    fprintf(stderr, "\t  ZeroFrames: keep\n");
   }
   if (jconf->preprocess.use_zmean) {
-    fprintf(stderr,"   remove DC: on\n");
+    fprintf(stderr, "\t   DCRemoval: on\n");
   } else {
-    fprintf(stderr,"   remove DC: off\n");
+    fprintf(stderr, "\t   DCRemoval: off\n");
   }
   if (pause_each) {
-    fprintf(stderr,"   Autopause: on\n");
+    fprintf(stderr, "\t   AutoPause: on\n");
   } else {
-    fprintf(stderr,"   Autopause: off\n");
+    fprintf(stderr, "\t   Auto`ause: off\n");
   }
   if (loose_sync) {
-    fprintf(stderr,"   LooseSync: on\n");
+    fprintf(stderr, "\t   LooseSync: on\n");
   } else {
-    fprintf(stderr,"   LooseSync: off\n");
+    fprintf(stderr, "\t   LooseSync: off\n");
   }
   if (rewind_msec > 0) {
-    fprintf(stderr,"      Rewind: %d msec\n", rewind_msec);
+    fprintf(stderr, "\t      Rewind: %d msec\n", rewind_msec);
   } else {
-    fprintf(stderr,"      Rewind: no\n");
+    fprintf(stderr, "\t      Rewind: no\n");
   }
-  fprintf(stderr,"   Output to: ");
+  fprintf(stderr, "OUTPUT\n");
   switch(speech_output) {
   case SPOUT_FILE:
+    fprintf(stderr, "\t  OutputType: waveform\n");
+    fprintf(stderr, "\t    OutputTo: file\n");
+    fprintf(stderr, "\t    FileName: ");
     if (jconf->detect.silence_cut) {
       if (continuous_segment) {
 	if (use_raw) {
@@ -442,18 +490,48 @@ put_status(Recog *recog)
     }
     break;
   case SPOUT_STDOUT:
-    fprintf(stderr,"STDOUT\n");
+    fprintf(stderr, "\t  OutputType: waveform\n");
+    fprintf(stderr, "\t    OutputTo: standard output\n");
     use_raw = TRUE;
     break;
   case SPOUT_ADINNET:
-    fprintf(stderr, "adinnet server");
+    fprintf(stderr, "\t  OutputType: waveform\n");
+    fprintf(stderr, "\t    OutputTo: adinnet server\n");
+    fprintf(stderr, "\t      SendTo:");
     for(i=0;i<adinnet_servnum;i++) {
       fprintf(stderr, " (%s:%d)", adinnet_serv[i], adinnet_port[i]);
     }
     fprintf(stderr, "\n");
     break;
+  case SPOUT_VECTORNET:
+    fprintf(stderr, "\t  OutputType: feature vector sequence\n");
+    fprintf(stderr, "\t    OutputTo: vecnet server\n");
+    fprintf(stderr, "\t      SendTo:");
+    for(i=0;i<adinnet_servnum;i++) {
+      fprintf(stderr, " (%s:%d)", adinnet_serv[i], adinnet_port[i]);
+    }
+    fprintf(stderr, "\n");
+    {
+      char buf[80];
+      fprintf(stderr, "\t   ParamType: %s\n", param_code2str(buf, vecnet_paramtype, FALSE));
+      fprintf(stderr, "\t   VectorLen: %d\n", vecnet_veclen);
+    }
+    break;
   }
-  fprintf(stderr,"----\n");
+
+  fprintf(stderr, "----------------------------------------\n");
+
+  if (speech_output == SPOUT_VECTORNET) {
+    MFCCCalc *mfcc;
+
+    fprintf(stderr, "Detailed parameter setting for feature extraction\n");
+    for(mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+      fprintf(stderr, "[MFCC%02d]\n", mfcc->id);
+      print_mfcc_info(stderr, mfcc, recog->jconf);
+    }
+    fprintf(stderr, "----------------------------------------\n");
+  }
+
 }    
 
 static char *
@@ -577,7 +655,7 @@ adin_callback_file(SP16 *now, int len, Recog *recog)
       return -1;
     }
     if (count < len * sizeof(SP16)) {
-      fprintf(stderr, "adinrec: cannot write more %d bytes\ncurrent length = %d\n", count, speechlen * sizeof(SP16));
+      fprintf(stderr, "adinrec: cannot write more %d bytes\ncurrent length = %lu\n", count, speechlen * sizeof(SP16));
       return -1;
     }
   } else {
@@ -690,6 +768,254 @@ adin_callback_adinnet(SP16 *now, int len, Recog *recog)
   /* display progress in dots */
   fprintf(stderr, ".");
   return(0);
+}
+
+boolean
+vecnet_init(Recog *recog)
+{
+  Jconf *jconf = recog->jconf;
+  JCONF_AM *amconf = jconf->am_root;
+  MFCCCalc *mfcc;
+  PROCESS_AM *am;
+  
+  am = j_process_am_new(recog, amconf);
+  calc_para_from_header(&(jconf->am_root->analysis.para), vecnet_paramtype, vecnet_veclen);
+
+  /* from j_final_fusion() */
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    create_mfcc_calc_instances(recog);
+  }
+  for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+    mfcc->param = new_param();
+  }
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+      if (mfcc->frontend.sscalc) {
+        mfcc->frontend.mfccwrk_ss = WMP_work_new(mfcc->para);
+        if (mfcc->frontend.mfccwrk_ss == NULL) {
+          return FALSE;
+        }
+        if (mfcc->frontend.sscalc_len * recog->jconf->input.sfreq / 1000 < mfcc->para->framesize) {
+          return FALSE;
+        }
+      }
+    }
+  }
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    if (RealTimeInit(recog) == FALSE) {
+      fprintf(stderr, "Error: failed to initialize feature extraction module\n");
+      return FALSE;
+    }
+  }
+}
+
+int vecnet_send_data(int sd, void *buf, int bytes)
+{
+  /* send data size header (4 byte) */
+  if (send(sd, &bytes, sizeof(int), 0) != sizeof(int)) {
+    fprintf(stderr, "Error: failed to send %lu bytes\n", sizeof(int));
+    return -1;
+  }
+
+  /* send data body */
+  if (send(sd, buf, bytes, 0) != bytes) {
+    fprintf(stderr, "Error: failed to send %lu bytes\n", sizeof(int));
+    return -1;
+  }
+
+  return 0;
+}
+
+typedef struct {
+  int veclen;                 ///< (4 byte)Vector length of an input
+  int fshift;                 ///< (4 byte) Frame shift in msec of the vector
+  char outprob_p;             ///< (1 byte) != 0 if input is outprob vector
+} ConfigurationHeader;
+
+void
+vecnet_send_header(Recog *recog)
+{
+  ConfigurationHeader conf;
+  int i;
+
+  conf.veclen = recog->jconf->am_root->analysis.para.veclen;
+  conf.fshift = 1000.0 * recog->jconf->am_root->analysis.para.frameshift / recog->jconf->am_root->analysis.para.smp_freq;
+  conf.outprob_p = 0;		/* feature output */
+  for (i=0;i<adinnet_servnum;i++) {
+    vecnet_send_data(sd[i], &conf, sizeof(ConfigurationHeader));
+  }
+}
+
+boolean
+vecnet_prepare(Recog *recog)
+{
+  RealBeam *r = &(recog->real);
+  MFCCCalc *mfcc;
+
+  r->windownum = 0;
+  for(mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+    mfcc->param->veclen = vecnet_veclen;
+    if (mfcc->para->cmn || mfcc->para->cvn) CMN_realtime_prepare(mfcc->cmn.wrk);
+    param_alloc(mfcc->param, 1, mfcc->param->veclen);
+    mfcc->f = 0;
+  }
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    reset_mfcc(recog);
+  }
+  recog->triggered = FALSE;
+
+  return TRUE;
+  
+}
+
+void
+vecnet_sub(SP16 *Speech, int nowlen, Recog *recog)
+{
+  int i, j, k, now, ret;
+  MFCCCalc *mfcc;
+  RealBeam *r = &(recog->real);
+
+  now = 0;
+  
+  while (now < nowlen) {
+    for(i = min(r->windowlen - r->windownum, nowlen - now); i > 0 ; i--)
+      r->window[r->windownum++] = (float) Speech[now++];
+    if (r->windownum < r->windowlen) break;
+    for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+      mfcc->valid = FALSE;
+      if (RealTimeMFCC(mfcc, r->window, r->windowlen)) {
+        mfcc->valid = TRUE;
+	param_alloc(mfcc->param, mfcc->f + 1, mfcc->param->veclen);
+	memcpy(mfcc->param->parvec[mfcc->f], mfcc->tmpmfcc, sizeof(VECT) * mfcc->param->veclen);
+#if 0
+	{
+	  int i;
+	  for (i = 0; i < vecnet_veclen; i++) {
+	    printf(" %f", mfcc->tmpmfcc[i]);
+	  }
+	  printf("\n");
+	}
+#endif
+	/* send 1 frame */
+	for (j=0;j<adinnet_servnum;j++) {
+	  vecnet_send_data(sd[j], mfcc->tmpmfcc, sizeof(VECT) * vecnet_veclen);
+	}
+	mfcc->f++;
+      }
+    }
+    /* shift window */
+    memmove(r->window, &(r->window[recog->jconf->input.frameshift]), sizeof(SP16) * (r->windowlen - recog->jconf->input.frameshift));
+    r->windownum -= recog->jconf->input.frameshift;
+  }
+}
+
+void
+vecnet_param_update(Recog *recog)
+{
+  MFCCCalc *mfcc;
+
+  for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+    mfcc->param->header.samplenum = mfcc->f;
+    mfcc->param->samplenum = mfcc->f;
+  }
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+      if (mfcc->f > 0 && mfcc->para && mfcc->para->cmn) {
+	if (mfcc->cmn.update) {
+	  CMN_realtime_update(mfcc->cmn.wrk, mfcc->param);
+	}
+	if (mfcc->cmn.save_filename) {
+	  CMN_save_to_file(mfcc->cmn.wrk, mfcc->cmn.save_filename);
+	}
+      }
+    }
+  }
+}
+
+
+static int
+adin_callback_vecnet(SP16 *now, int len, Recog *recog)
+{
+  int count;
+  int start, w;
+  int i;
+
+  start = 0;
+
+  if (recog->jconf->input.speech_input == SP_MIC && speechlen == 0) {
+    /* this is first up-trigger */
+    if (rewind_msec > 0 && !recog->adin->is_valid_data) {
+      /* not spoken currently but has data to process at first trigger */
+      /* it means that there are old spoken segments */
+      /* disgard them */
+      printf("disgard already recorded %d samples\n", len);
+      return 0;
+    }
+    /* erase "<<<please speak>>>" text on tty */
+    fprintf(stderr, "\r                    \r");
+    if (rewind_msec > 0) {
+      /* when -rewind value set larger than 0, the speech data spoken
+	 while pause will be considered back to the specified msec.
+	 */
+      printf("buffered samples=%d\n", len);
+      w = rewind_msec * sfreq / 1000;
+      if (len > w) {
+	start = len - w;
+	len = w;
+      } else {
+	start = 0;
+      }
+      printf("will process from %d\n", start);
+    }
+  }
+
+  vecnet_sub(&(now[start]), len, recog);
+
+  /* accumulate sample num of this segment */
+  speechlen += len;
+#ifdef HAVE_PTHREAD
+  if (recog->adin->enable_thread) {
+    /* if input length reaches limit, rehash the ad-in buffer */
+    if (recog->adin->speechlen > MAXSPEECHLEN - 16000) {
+      recog->adin->rehash = TRUE;
+      fprintf(stderr, "+");
+    }
+  }
+#endif
+  
+  /* display progress in dots */
+  fprintf(stderr, ".");
+  return(0);
+}
+
+static void
+vecnet_send_end_of_segment()
+{
+  int i, j;
+  
+  /* send header value of '0' as an end-of-utterance marker */
+  i = 0;
+  for (j=0;j<adinnet_servnum;j++) {
+    if (send(sd[j], &i, sizeof(int), 0) != sizeof(int)) {
+      fprintf(stderr, "Error: failed to send %lu bytes\n", sizeof(int));
+      return ;
+    }
+  }
+}
+
+static void
+vecnet_send_end_of_session()
+{
+  int i, j;
+
+  /* send negative header value as an end-of-session marker */
+  i = -1;
+  for (j=0;j<adinnet_servnum;j++) {
+    if (send(sd[j], &i, sizeof(int), 0) != sizeof(int)) {
+      fprintf(stderr, "Error: failed to send %lu bytes\n", sizeof(int));
+      return;
+    }
+  }
 }
 
 /**********************************************************************/
@@ -950,6 +1276,9 @@ interrupt_record(int signum)
     /* close files */
     close_files();
   }
+  if (speech_output == SPOUT_VECTORNET) {
+    vecnet_send_end_of_session();
+  }
   /* terminate program */
   exit(1);
 }
@@ -1003,9 +1332,12 @@ main(int argc, char *argv[])
   j_add_option("-port", 1, 1, "port number (-out adinnet)", opt_port);
   j_add_option("-inport", 1, 1, "port number (-in adinnet)", opt_inport);
   j_add_option("-filename", 1, 1, "(base) filename to record (-out file)", opt_filename);
+  j_add_option("-paramtype", 1, 1, "feature parameter type in HTK format", opt_paramtype);
+  j_add_option("-veclen", 1, 1, "feature parameter vector length", opt_veclen);
   j_add_option("-startid", 1, 1, "recording start id (-out file)", opt_startid);
   j_add_option("-freq", 1, 1, "sampling frequency in Hz", opt_freq);
   j_add_option("-nosegment", 0, 0, "not segment input speech, record all", opt_nosegment);
+  j_add_option("-segment", 0, 0, "force segment input speech", opt_segment);
   j_add_option("-oneshot", 0, 0, "exit after the first input", opt_oneshot);
   j_add_option("-raw", 0, 0, "save in raw (BE) format", opt_raw);
   j_add_option("-autopause", 0, 0, "automatically pause at each input end", opt_autopause);
@@ -1032,12 +1364,12 @@ main(int argc, char *argv[])
     fprintf(stderr, "Error: output filename not specified\n");
     return(-1);
   }
-  if (speech_output == SPOUT_ADINNET && adinnet_servnum < 1) {
-    fprintf(stderr, "Error: adinnet server name for output not specified\n");
+  if ((speech_output == SPOUT_ADINNET || speech_output == SPOUT_VECTORNET) && adinnet_servnum < 1) {
+    fprintf(stderr, "Error: server name for output not specified\n");
     return(-1);
   }
   if (jconf->input.speech_input == SP_ADINNET &&
-      speech_output != SPOUT_ADINNET &&
+      speech_output != SPOUT_ADINNET && speech_output != SPOUT_VECTORNET &&
       adinnet_servnum >= 1) {
     fprintf(stderr, "Warning: you specified port num by -port, but it's for output\n");
     fprintf(stderr, "Warning: you may specify input port by -inport instead.\n");
@@ -1052,7 +1384,11 @@ main(int argc, char *argv[])
   if (adinnet_portnum != adinnet_servnum) {
     /* if only one server, use default */
     if (adinnet_servnum == 1) {
-      adinnet_port[0] = ADINNET_PORT;
+      if (speech_output == SPOUT_ADINNET) {
+	adinnet_port[0] = ADINNET_PORT;
+      } else if (speech_output == SPOUT_VECTORNET) {
+	adinnet_port[0] = VECINNET_PORT;
+      }
       adinnet_portnum = 1;
     } else {
       fprintf(stderr, "Error: you should specify both server names and different port for each!\n");
@@ -1065,7 +1401,17 @@ main(int argc, char *argv[])
     }
   }
 
+  if (speech_output == SPOUT_VECTORNET) {
+    if (vecnet_paramtype == F_ERR_INVALID || vecnet_veclen == 0) {
+      fprintf(stderr, "Error: with \"-out vecnet\", \"-paramtype\" and \"-veclen\" is required\n");
+      return -1;
+    }
+  }
+
   /* set Julius default parameters for unspecified acoustic parameters */
+  if (jconf->am_root->analysis.para_htk.loaded == 1) {
+    apply_para(&(jconf->am_root->analysis.para), &(jconf->am_root->analysis.para_htk));
+  }
   apply_para(&(jconf->am_root->analysis.para), &(jconf->am_root->analysis.para_default));
 
   /* set some values */
@@ -1073,6 +1419,10 @@ main(int argc, char *argv[])
   jconf->input.period = jconf->am_root->analysis.para.smp_period;
   jconf->input.frameshift = jconf->am_root->analysis.para.frameshift;
   jconf->input.framesize = jconf->am_root->analysis.para.framesize;
+
+  if (speech_output == SPOUT_VECTORNET) {
+    if (vecnet_init(recog) == FALSE) exit(1);
+  }
 
   /* disable successive segmentation when no segmentation available */
   if (!jconf->detect.silence_cut) continuous_segment = FALSE;
@@ -1093,7 +1443,17 @@ main(int argc, char *argv[])
 	outpath = new_output_filename(filename, ".wav");
       }
     }
-  } else if (speech_output == SPOUT_ADINNET) {
+  }
+
+  /**************************************/
+  /* display input/output configuration */
+  /**************************************/
+  put_status(recog);
+
+  /*********************/
+  /* connect to server */
+  /*********************/
+  if (speech_output == SPOUT_ADINNET || speech_output == SPOUT_VECTORNET) {
     /* connect to adinnet server(s) */
     for(i=0;i<adinnet_servnum;i++) {
       fprintf(stderr, "connecting to #%d (%s:%d)...", i+1, adinnet_serv[i], adinnet_port[i]);
@@ -1104,15 +1464,31 @@ main(int argc, char *argv[])
   } else if (speech_output == SPOUT_STDOUT) {
     /* output to stdout */
     fd = 1;
-    fprintf(stderr,"[STDOUT]");
+  }
+
+  if (speech_output == SPOUT_VECTORNET) {
+    vecnet_send_header(recog);
   }
 
   /**********************/
   /* interrupt handling */
   /**********************/
   if (signal(SIGINT, interrupt_record) == SIG_ERR) {
-    fprintf(stderr, "Warning: signal intterupt may collapse output\n");
+    fprintf(stderr, "Warning: signal interruption may collapse output\n");
   }
+  if (signal(SIGTERM, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal interruption may collapse output\n");
+  }
+#ifdef SIGPIPE
+  if (signal(SIGPIPE, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal interruption may collapse output\n");
+  }
+#endif
+#ifdef SIGQUIT
+  if (signal(SIGQUIT, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal interruption may collapse output\n");
+  }
+#endif
 
   /***************************/
   /* initialize input device */
@@ -1138,11 +1514,6 @@ main(int argc, char *argv[])
   /*********************/
   callback_add(recog, CALLBACK_EVENT_SPEECH_START, record_trigger_time, NULL);
 
-
-  /**************************************/
-  /* display input/output configuration */
-  /**************************************/
-  put_status(recog);
 
   /*******************/
   /* begin recording */
@@ -1198,6 +1569,12 @@ main(int argc, char *argv[])
       }
       if (speech_output == SPOUT_ADINNET) {
 	ret = adin_go(adin_callback_adinnet, adinnet_check_command, recog);
+      } else if (speech_output == SPOUT_VECTORNET) {
+	if (vecnet_prepare(recog) == FALSE){
+	  fprintf(stderr, "failed to init\n");
+	  exit(1);
+	}
+	ret = adin_go(adin_callback_vecnet, adinnet_check_command, recog);
       } else {
 	ret = adin_go(adin_callback_file, NULL, recog);
       }
@@ -1249,6 +1626,19 @@ main(int argc, char *argv[])
 		 trigger_sample, (float)trigger_sample / (float)sfreq, 
 		 trigger_sample + speechlen, (float)(trigger_sample + speechlen) / (float)sfreq);
 	}
+      } else if (speech_output == SPOUT_VECTORNET) {
+	if (speechlen > 0) {
+	  if (ret >= 0 || stop_at_next) { /* segmented by adin-cut or end of stream or server-side command */
+	    /* send end-of-segment ack to client */
+	    vecnet_send_end_of_segment();
+	    vecnet_param_update(recog);
+	  }
+	  /* output info */
+	  printf("sent: %d samples (%.2f sec.) [%6d (%5.2fs) - %6d (%5.2fs)]\n", 
+		 speechlen, (float)speechlen / (float)sfreq,
+		 trigger_sample, (float)trigger_sample / (float)sfreq, 
+		 trigger_sample + speechlen, (float)(trigger_sample + speechlen) / (float)sfreq);
+	}
       }
 
       /*************************************/
@@ -1266,14 +1656,14 @@ main(int argc, char *argv[])
       if (pause_each) {
 	/* pause at each end */
 	//if (speech_output == SPOUT_ADINNET && speechlen > 0) {
-	if (speech_output == SPOUT_ADINNET) {
+	if (speech_output == SPOUT_ADINNET || speech_output == SPOUT_VECTORNET) {
 	  if (adinnet_wait_command() < 0) {
 	    /* command error: terminate program here */
 	    return 1;
 	  }
 	}
       } else {
-	if (speech_output == SPOUT_ADINNET && stop_at_next) {
+	if ((speech_output == SPOUT_ADINNET || speech_output == SPOUT_VECTORNET) && stop_at_next) {
 	  if (adinnet_wait_command() < 0) {
 	    /* command error: terminate program here */
 	    return 1;
@@ -1302,6 +1692,11 @@ main(int argc, char *argv[])
     if (continuous_segment) {
       printf("recorded total %d samples (%.2f sec.) segmented to %s.%04d - %s.%04d files\n", total_speechlen, (float)total_speechlen / (float)sfreq, filename, 0, filename, sid-1);
     }
+  }
+
+  if (speech_output == SPOUT_VECTORNET) {
+    vecnet_send_end_of_session();
+    vecnet_param_update(recog);
   }
 
   return 0;

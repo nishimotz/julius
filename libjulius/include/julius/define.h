@@ -27,13 +27,13 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 15:17:26 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.10 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -57,6 +57,8 @@
 #define LM_NGRAM_USER 3		///< User-defined statistical LM
 
 /* recognition status */
+#define J_RESULT_STATUS_REJECT_LONG -8 ///< Input rejected by long input
+#define J_RESULT_STATUS_BUFFER_OVERFLOW -7 ///< Input buffer overflow
 #define J_RESULT_STATUS_REJECT_POWER -6 ///< Input rejected by power
 #define J_RESULT_STATUS_TERMINATE -5 ///< Input was terminated by app. request
 #define J_RESULT_STATUS_ONLY_SILENCE -4 ///< Input contains only silence
@@ -282,6 +284,11 @@
  */
 #define FAST_FACTOR1_SUCCESSOR_LIST
 
+/**
+ * Enable score based pruning at the 1st pass.
+ * 
+ */
+#define SCORE_PRUNING
 
 #endif /* __J_DEFINE_H__ */
 

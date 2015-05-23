@@ -4,12 +4,12 @@
  * @file   acconfig.h
  * 
  * <JA>
- * @brief  config.h.in дБEconfigure.in длдщ└╕└од╣дБE┐дсд╬ autoconf ═╤е╪е├е└
+ * @brief  config.h.in дЄ configure.in длдщ└╕└од╣дыд┐дсд╬ autoconf ═╤е╪е├е└
  *
- * д│д╬е╒ебедеБE╧е╜б╝е╣длдщедеєепеБE╝е╔д╡дБEБE│д╚д╧двдъд▐д╗дБE 
- * ╝┬║▌д╦д╧д│д╬╞т═╞д╧ config.h.in д╦╦фдс╣■д▐дБE╞дкдъбд
- * configure д╦дшд├д╞ config.h.in длдщ└╕└од╡дБE┐ config.h дм
- * е╫е·┴░ещерд╦дшд├д╞╗╚═╤д╡дБE▐д╣. 
+ * д│д╬е╒ебедеыд╧е╜б╝е╣длдщедеєепеыб╝е╔д╡дьдыд│д╚д╧двдъд▐д╗дєбе
+ * ╝┬║▌д╦д╧д│д╬╞т═╞д╧ config.h.in д╦╦фдс╣■д▐дьд╞дкдъбд
+ * configure д╦дшд├д╞ config.h.in длдщ└╕└од╡дьд┐ config.h дм
+ * е╫еэе░ещерд╦дшд├д╞╗╚═╤д╡дьд▐д╣бе
  *
  * @sa config.h, config.h.in, configure, configure.in
  * </JA>
@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 19 12:53:54 2005
  *
- * $Revision: 1.1 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -37,7 +37,7 @@
 #define JULIUS_PRODUCTNAME "JuliusLib"
 
 /// Version string
-#define JULIUS_VERSION "4.1.2"
+#define JULIUS_VERSION "4.2.3"
 
 /// Engine setting (value of "--enable-setup=...").
 #define JULIUS_SETUP "fast"

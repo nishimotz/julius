@@ -1,6 +1,6 @@
 #
 # Sample Jconf configuration file
-# for Julius library rev.4.1.1
+# for Julius library rev.4.3
 #
 # 1) Options can also be specified in command line option.
 #    The values are default values in Julius.
@@ -43,17 +43,28 @@
 #-demo				# same as "-quiet -progout"
 
 ####
-#### Audio Input
+#### Stream Input
 ####
+
+## Feature vector input
+#-input mfcfile			# feature vector in HTK parameter file
+#-input htkparam		# (same as "mfcfile")
+#-input outprob			# outprob vector in HTK parameter file
+#-input vecet			# feature / outprob vector via network client
+
+## Raw audio input
 #-input mic    			# live microphone
 #-input rawfile			# wavefile
-#-input mfcfile			# MFCC file (HTK Parameter file)
+#-input file			# (same as "rawfile")
 #-input stdin			# waveform from standard input
 #-input adinnet			# waveform via network client
-#-input netaudio		# DatLink server
+#-input netaudio                # DatLink server
 #-input oss			# OSS API input (if available)
 #-input alsa			# ALSA API input (if available)
 #-input esd			# ESounD daemon input (if available)
+#-input portaudio		# PortAudio API
+#-input pulseaudio		# PulseAudio API
+
 
 #-filelist filename		# input file list
 #-notypecheck			# does not check parameter type of input
@@ -63,6 +74,11 @@
 #-nostrip			# do not strip zero samples
 #-zmean				# remove DC offset (use long input average)
 #-nozmean			# disable "-zmean" specified before
+
+####
+#### Audio Input Scaling
+####
+#-lvscale 1.0			# input level scaling factor (1.0 = disable)
 
 ####
 #### Speech segment detection by level and zero-cross
@@ -75,7 +91,9 @@
 #-zc 60				# zero-cross threshold (times in sec.)
 #-headmargin 300		# head silence margin (msec)
 #-tailmargin 400		# tail silence margin (msec)
+#-chunk_size 1000		# processing segment unit length in samples
 #-rejectshort 0			# reject shorter input (msec)
+#-rejectlong -1			# reject longer input (msec) -1 to disable
 
 ####
 #### Input rejection by average power (EXPERIMENTAL)
@@ -204,6 +222,8 @@
 #-iwspword			# add a pause word to the dictionary
 #-iwspentry "<UNK> [sp] sp sp"	# word that will be added by "-iwspword"
 #-sepnum 150			# num of high freq words to linearize 
+#-adddict dictfile              # append additional word dictionary
+#-addword entry                 # append additional word entry
 
 ####
 #### Grammar
@@ -326,6 +346,7 @@
 #-lmp weight penalty		# LM weight and word insertion penalty (pass1)
 #-penalty1 penalty		# word insertion penalty for grammar (pass1)
 #-b width			# beam width (# of nodes)
+#-bs score                      # beam width (score)
 #-nlimit 3			# with enable-wpair-nlimit, set max N at nodes
 #-progout			# progressive output while decoding
 #-proginterval 300		# output interval in msec for "-progout"
@@ -383,5 +404,10 @@
 #-walign			# enable alignment for result at word level
 #-palign			# enable alignment for result at phoneme level
 #-salign			# enable alignment for result at state level
+
+####
+#### misc.
+####
+-outprobout filename		# save computed outprob vectors to HTK file (for debug)
 
 ################################################################# end of file

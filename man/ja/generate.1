@@ -1,94 +1,115 @@
+'\" t
 .\"     Title: 
     generate
   
 .\"    Author: 
-.\" Generator: DocBook XSL Stylesheets v1.71.0 <http://docbook.sf.net/>
-.\"      Date: 10/02/2008
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 19/12/2013
 .\"    Manual: 
 .\"    Source: 
+.\"  Language: Japanese
 .\"
-.TH "GENERATE" "1" "10/02/2008" "" ""
+.TH "GENERATE" "1" "19/12/2013" ""
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
 .\" disable hyphenation
 .nh
 .\" disable justification (adjust text to left margin only)
 .ad l
-.SH "Ì¾Á°"
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "åå‰"
 
     generate
-   \- Ê¸Ë¡¤«¤éÊ¸¤ò¥é¥ó¥À¥àÀ¸À®¤¹¤ë
-.SH "³µÍ×"
-.HP 9
+   \- æ–‡æ³•ã‹ã‚‰æ–‡ã‚’ãƒ©ãƒ³ãƒ€ãƒ ç”Ÿæˆã™ã‚‹
+.SH "æ¦‚è¦"
+.HP \w'\fBgenerate\fR\ 'u
 \fBgenerate\fR [\-v] [\-t] [\-n\ \fInum\fR] [\-s\ \fIspname\fR] {prefix}
 .SH "DESCRIPTION"
 .PP
-generate ¤ÏÊ¸Ë¡¤Ë½¾¤Ã¤ÆÊ¸¤ò¥é¥ó¥À¥à¤ËÀ¸À®¤·¤Ş¤¹¡¥
+generate ã¯æ–‡æ³•ã«å¾“ã£ã¦æ–‡ã‚’ãƒ©ãƒ³ãƒ€ãƒ ã«ç”Ÿæˆã—ã¾ã™ï¼
 .PP
-¼Â¹Ô¤Ë¤Ï .dfa, .dict, .term ¤Î³Æ¥Õ¥¡¥¤¥ë¤¬É¬Í×¤Ç¤¹¡¥ ¤¢¤é¤«¤¸¤á
-\fBmkdfa.pl\fR
-¤ÇÀ¸À®¤·¤Æ¤ª¤¤¤Æ²¼¤µ¤¤¡¥
+å®Ÿè¡Œã«ã¯ \&.dfa, \&.dict, \&.term ã®å„ãƒ•ã‚¡ã‚¤ãƒ«ãŒå¿…è¦ã§ã™ï¼ ã‚ã‚‰ã‹ã˜ã‚
+\fBmkdfa\&.pl\fR
+ã§ç”Ÿæˆã—ã¦ãŠã„ã¦ä¸‹ã•ã„ï¼
 .SH "OPTIONS"
 .PP
 \fB \-t \fR
-.RS 3n
-Ã±¸ì¤Ç¤Ï¤Ê¤¯¥«¥Æ¥´¥êÌ¾¤Ç½ĞÎÏ¤¹¤ë¡¥
+.RS 4
+å˜èªã§ã¯ãªãã‚«ãƒ†ã‚´ãƒªåã§å‡ºåŠ›ã™ã‚‹ï¼
 .RE
 .PP
 \fB \-n \fR \fInum\fR
-.RS 3n
-À¸À®¤¹¤ëÊ¸¤Î¿ô¤ò»ØÄê¤¹¤ë (default: 10)
+.RS 4
+ç”Ÿæˆã™ã‚‹æ–‡ã®æ•°ã‚’æŒ‡å®šã™ã‚‹ (default: 10)
 .RE
 .PP
 \fB \-s \fR \fIspname\fR
-.RS 3n
-À¸À®¤Ë¤ª¤¤¤Æ¥¹¥­¥Ã¥×¤¹¤Ù¤­¥·¥ç¡¼¥È¥İ¡¼¥ºÃ±¸ì¤ÎÌ¾Á°¤ò»ØÄê¤¹¤ë¡¥ (default: "sp")
+.RS 4
+ç”Ÿæˆã«ãŠã„ã¦ã‚¹ã‚­ãƒƒãƒ—ã™ã¹ãã‚·ãƒ§ãƒ¼ãƒˆãƒãƒ¼ã‚ºå˜èªã®åå‰ã‚’æŒ‡å®šã™ã‚‹ï¼ (default: "sp")
 .RE
 .PP
 \fB \-v \fR
-.RS 3n
-¥Ç¥Ğ¥Ã¥°½ĞÎÏ¡¥
+.RS 4
+ãƒ‡ãƒãƒƒã‚°å‡ºåŠ›ï¼
 .RE
 .SH "EXAMPLES"
 .PP
-vfr (¥Õ¥£¥Ã¥Æ¥£¥ó¥°¥¿¥¹¥¯ÍÑÊ¸Ë¡) ¤Ç¤Î¼Â¹ÔÎã¡§
+vfr (ãƒ•ã‚£ãƒƒãƒ†ã‚£ãƒ³ã‚°ã‚¿ã‚¹ã‚¯ç”¨æ–‡æ³•) ã§ã®å®Ÿè¡Œä¾‹ï¼š
 .sp
-.RS 3n
+.if n \{\
+.RS 4
+.\}
 .nf
 % generate vfr
-Reading in dictionary...done
-Reading in DFA grammar...done
-Mapping dict item <\-> DFA terminal (category)...done
-Reading in term file (optional)...done
+Reading in dictionary\&.\&.\&.done
+Reading in DFA grammar\&.\&.\&.done
+Mapping dict item <\-> DFA terminal (category)\&.\&.\&.done
+Reading in term file (optional)\&.\&.\&.done
 42 categories, 99 words
 DFA has 135 nodes and 198 arcs
  \-\-\-\-\- 
-silB ¤ä¤á¤Ş¤¹ silE
-silB ½ªÎ»¤·¤Ş¤¹ silE
-silB ¥·¥ã¥Ä ¤ò ¥¹¡¼¥Ä ¤È Åı°ì¤·¤Æ ²¼¤µ¤¤ silE
-silB ¥¹¡¼¥Ä ¤ò ¥«¥Ã¥¿¡¼ ¤È Æ±¤¸ ¿§ ¤Ë Åı°ì¤·¤Æ ²¼¤µ¤¤ silE
-silB ¸ò´¹¤·¤Æ ²¼¤µ¤¤ silE
-silB ¤³¤ì ¤ò ³Ğ¤¨¤Æ¤ª¤¤¤Æ ²¼¤µ¤¤ silE
-silB ³Ğ¤¨¤Æ¤ª¤¤¤Æ ²¼¤µ¤¤ silE
-silB Ìá¤Ã¤Æ ²¼¤µ¤¤ silE
-silB ¥¹¡¼¥Ä ¤ò ¥·¥ã¥Ä ¤È Åı°ì¤·¤Æ ²¼¤µ¤¤ silE
-silB ¾åÃå ¤ò Üô ¤Ë ¤·¤Æ ²¼¤µ¤¤ silE
+silB ã‚„ã‚ã¾ã™ silE
+silB çµ‚äº†ã—ã¾ã™ silE
+silB ã‚·ãƒ£ãƒ„ ã‚’ ã‚¹ãƒ¼ãƒ„ ã¨ çµ±ä¸€ã—ã¦ ä¸‹ã•ã„ silE
+silB ã‚¹ãƒ¼ãƒ„ ã‚’ ã‚«ãƒƒã‚¿ãƒ¼ ã¨ åŒã˜ è‰² ã« çµ±ä¸€ã—ã¦ ä¸‹ã•ã„ silE
+silB äº¤æ›ã—ã¦ ä¸‹ã•ã„ silE
+silB ã“ã‚Œ ã‚’ è¦šãˆã¦ãŠã„ã¦ ä¸‹ã•ã„ silE
+silB è¦šãˆã¦ãŠã„ã¦ ä¸‹ã•ã„ silE
+silB æˆ»ã£ã¦ ä¸‹ã•ã„ silE
+silB ã‚¹ãƒ¼ãƒ„ ã‚’ ã‚·ãƒ£ãƒ„ ã¨ çµ±ä¸€ã—ã¦ ä¸‹ã•ã„ silE
+silB ä¸Šç€ ã‚’ æ©™ ã« ã—ã¦ ä¸‹ã•ã„ silE
 .fi
+.if n \{\
 .RE
+.\}
 .sp
 .SH "SEE ALSO"
 .PP
 
 \fB mkdfa.pl \fR( 1 )
 ,
-\fB generate\-ngram \fR( 1 )
+\fB generate-ngram \fR( 1 )
 .SH "COPYRIGHT"
 .PP
-Copyright (c) 1991\-2008 µşÅÔÂç³Ø ²Ï¸¶¸¦µæ¼¼
+Copyright (c) 1991\-2013 äº¬éƒ½å¤§å­¦ æ²³åŸç ”ç©¶å®¤
 .PP
-Copyright (c) 1997\-2000 ¾ğÊó½èÍı¿¶¶½»ö¶È¶¨²ñ(IPA)
+Copyright (c) 1997\-2000 æƒ…å ±å‡¦ç†æŒ¯èˆˆäº‹æ¥­å”ä¼š(IPA)
 .PP
-Copyright (c) 2000\-2008 ÆàÎÉÀèÃ¼²Ê³Øµ»½ÑÂç³Ø±¡Âç³Ø ¼¯Ìî¸¦µæ¼¼
+Copyright (c) 2000\-2005 å¥ˆè‰¯å…ˆç«¯ç§‘å­¦æŠ€è¡“å¤§å­¦é™¢å¤§å­¦ é¹¿é‡ç ”ç©¶å®¤
 .PP
-Copyright (c) 2005\-2008 Ì¾¸Å²°¹©¶ÈÂç³Ø Julius³«È¯¥Á¡¼¥à
+Copyright (c) 2005\-2013 åå¤å±‹å·¥æ¥­å¤§å­¦ Juliusé–‹ç™ºãƒãƒ¼ãƒ 
 .SH "LICENSE"
 .PP
-Julius ¤Î»ÈÍÑµöÂú¤Ë½à¤¸¤Ş¤¹¡¥
+Julius ã®ä½¿ç”¨è¨±è«¾ã«æº–ã˜ã¾ã™ï¼

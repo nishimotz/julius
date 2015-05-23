@@ -38,13 +38,13 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 19:06:46 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.9 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -60,15 +60,14 @@
 /* sound header */
 #include <sys/audioio.h>
 
+/// Default device name, can be overridden by AUDIODEV environment variable
+#define DEFAULT_DEVICE "/dev/audio"
+
 static int srate;		///< Required sampling rate
 static int afd;			///< Audio file descriptor
 static struct audio_info ainfo;	///< Audio format information
 static char *defaultdev = DEFAULT_DEVICE;
 static char devname[MAXPATHLEN];
-
-/// Default device name, can be overridden by AUDIODEV environment variable
-#define DEFAULT_DEVICE "/dev/audio"
-
 
 /** 
  * Device initialization: check device capability
@@ -237,6 +236,38 @@ adin_mic_read(SP16 *buf, int sampnum)
     return(-2);
   }
   return(cnt);
+}
+
+/** 
+ * Function to pause audio input (wait for buffer flush)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_pause()
+{
+  return TRUE;
+}
+
+/** 
+ * Function to terminate audio input (disgard buffer)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_terminate()
+{
+  return TRUE;
+}
+/** 
+ * Function to resume the paused / terminated audio input
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_resume()
+{
+  return TRUE;
 }
 
 /** 

@@ -17,13 +17,13 @@
  * @author Akinobu Lee
  * @date   Mon Aug  7 11:55:45 2006
  *
- * $Revision: 1.5 $
+ * $Revision: 1.9 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -510,11 +510,13 @@ MakeFBank(float *wave, MFCCWork *w, Value *para)
     }
   }
 
-  /* Take logs */
-  for(bin = 1; bin <= para->fbank_num; bin++){ 
-    temp = w->fbank[bin];
-    if(temp < 1.0) temp = 1.0;
-    w->fbank[bin] = log(temp);  
+  if (w->log_fbank) {
+    /* Take logs */
+    for(bin = 1; bin <= para->fbank_num; bin++){ 
+      temp = w->fbank[bin];
+      if(temp < 1.0) temp = 1.0;
+      w->fbank[bin] = log(temp);  
+    }
   }
 }
 
@@ -625,6 +627,26 @@ WMP_work_new(Value *para)
   w = (MFCCWork *)mymalloc(sizeof(MFCCWork));
   memset(w, 0, sizeof(MFCCWork));
 
+  /* set switches by the parameter type */
+  switch(para->basetype) {
+  case F_MFCC:
+    w->fbank_only = FALSE;
+    w->log_fbank = TRUE;
+    break;
+  case F_FBANK:
+    w->fbank_only = TRUE;
+    w->log_fbank = TRUE;
+    break;
+  case F_MELSPEC:
+    w->fbank_only = TRUE;
+    w->log_fbank = FALSE;
+    break;
+  default:
+    jlog("Error: mfcc-core: unsupported parameter type\n");
+    free(w);
+    return NULL;
+  }
+
   /* set filterbank information */
   if (InitFBank(w, para) == FALSE) return NULL;
 
@@ -679,6 +701,15 @@ WMP_calc(MFCCWork *w, float *mfcc, Value *para)
   }
   /* filterbank */
   MakeFBank(w->bf, w, para);
+
+  if (w->fbank_only) {
+    /* return the filterbank */
+    for (p = 0; p < para->mfcc_dim; p++) {
+      mfcc[p] = w->fbank[p+1];
+    }
+    return;
+  }
+
   /* 0'th cepstral parameter */
   if (para->c0) c0 = CalcC0(w, para);
   /* MFCC */

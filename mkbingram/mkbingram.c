@@ -18,24 +18,26 @@
  * @author Akinobu LEE
  * @date   Thu Mar 24 12:22:27 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.7 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 /* mkbingram --- make binary n-gram for JULIUS from ARPA standard format */
 
-/* $Id: mkbingram.c,v 1.3 2009/02/09 17:27:48 sumomo Exp $ */
+/* $Id: mkbingram.c,v 1.7 2013/06/20 17:14:27 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/ngram2.h>
 #include <sys/stat.h>
 #include <time.h>
+
+#include "charconv.h"
 
 static NGRAM_INFO *ngram;
 
@@ -48,6 +50,7 @@ usage(char *s)
   printf("    -nlr file       forward  N-gram in ARPA format\n");
   printf("    -nrl file       backward N-gram in ARPA format\n");
   printf("    -d bingramfile  Julius binary N-gram file input\n");
+  printf("    -c from to      convert character code\n");
   printf("    -swap           swap \"%s\" and \"%s\"\n", BEGIN_WORD_DEFAULT, END_WORD_DEFAULT);
   printf("\n      When both \"-nlr\" and \"-nrl\" are specified, \n");
   printf("      Julius will use the BACKWARD N-gram as main LM\n");
@@ -66,9 +69,13 @@ main(int argc, char *argv[])
   time_t now;
   char *binfile, *lrfile, *rlfile, *outfile;
   int i;
+  char *from_code, *to_code, *buf;
+  boolean charconv_enabled = FALSE;
   boolean force_swap = FALSE;
+  WORD_ID w;
 
   binfile = lrfile = rlfile = outfile = NULL;
+  from_code = to_code = NULL;
   if (argc <= 1) {
     usage(argv[0]);
     return -1;
@@ -106,6 +113,21 @@ main(int argc, char *argv[])
 	  usage(argv[0]);
 	  return -1;
 	}
+      } else if (argv[i][1] == 'c') {
+	if (++i >= argc) {
+	  printf("Error: no argument for option \"%s\"\n", argv[i]);
+	  usage(argv[0]);
+	  return -1;
+	}
+	from_code = strcpy((char*)mymalloc(strlen(argv[i])+1), argv[i]);
+	if (++i >= argc) {
+	  printf("Error: no argument for option \"%s\"\n", argv[i]);
+	  usage(argv[0]);
+	  free(from_code);
+	  return -1;
+	}
+	to_code = strcpy((char*)mymalloc(strlen(argv[i])+1),argv[i]);
+	charconv_enabled = TRUE;
       } else if (argv[i][1] == 's') {
 	force_swap = TRUE;
       }
@@ -184,6 +206,21 @@ main(int argc, char *argv[])
   }
 
   print_ngram_info(stdout, ngram);
+  
+  if (charconv_enabled == TRUE) {
+    /* do character conversion */
+    if (charconv_setup(from_code, to_code) == -1) {
+      fprintf(stderr, "failed to setup character convertsion\n");
+      return -1;
+    }
+    buf = (char *)mymalloc(4096);
+    for (w = 0; w < ngram->max_word_num; w++) {
+      charconv(ngram->wname[w], buf, 4096);
+      ngram->wname[w] = mybmalloc2(strlen(buf)+1, &(ngram->mroot));
+      strcpy(ngram->wname[w], buf);
+    }
+    free(buf);
+  }
 
   /* write in JULIUS binary format */
   if ((fp = fopen_writefile(outfile)) == NULL) {

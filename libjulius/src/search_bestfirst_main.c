@@ -35,13 +35,13 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.15 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -658,11 +658,15 @@ cm_compute_from_nbest(StackDecode *sd, NODE *start, int stacknum, JCONF_SEARCH *
     sd->sentcm = (LOGPROB *)mymalloc(sizeof(LOGPROB)*stacknum);
     sd->sentnum = stacknum;
   } else if (sd->sentnum < stacknum) { /* need expanded */
-    sd->sentcm = (LOGPROB *)myrealloc(sentcm, sizeof(LOGPROB)*stacknum);
+    sd->sentcm = (LOGPROB *)myrealloc(sd->sentcm, sizeof(LOGPROB)*stacknum);
     sd->sentnum = stacknum;
   }
   if (sd->wordcm == NULL) {
     sd->wordcm = (LOGPROB *)mymalloc(sizeof(LOGPROB) * winfo->num);
+    sd->wordnum = winfo->num;
+  } else if (sd->wordnum < winfo->num) {
+    sd->wordcm = (LOGPROB *)myremalloc(sd->wordcm, sizeof(LOGPROB) * winfo->num);
+    sd->wordnum = winfo->num;
   }
   
   cm_alpha = jconf->annotate.cm_alpha;
@@ -670,7 +674,7 @@ cm_compute_from_nbest(StackDecode *sd, NODE *start, int stacknum, JCONF_SEARCH *
   for (j = 0, cm_alpha = jconf->annotate.cm_alpha_bgn; cm_alpha <= jconf->annotate.cm_alpha_end; cm_alpha += jconf->annotate.cm_alpha_step) {
 #endif
     /* clear whole word cm buffer */
-    for(w=0;w<winfo->num;w++) {
+    for(w=0;w<sd->wordnum;w++) {
       sd->wordcm[w] = 0.0;
     }
     /* get best score */
@@ -1019,6 +1023,11 @@ store_result_pass2(NODE *hypo, RecogProcess *r)
   s->score = hypo->score;
   s->score_lm = hypo->totallscore;
   s->score_am = hypo->score - hypo->totallscore;
+
+#ifdef USE_MBR
+  s->score_mbr = hypo->score_mbr;
+#endif
+
   if (r->lmtype == LM_DFA) {
     /* output which grammar the hypothesis belongs to on multiple grammar */
     /* determine only by the last word */
@@ -2145,6 +2154,13 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
     if (debug2_flag) {
       jlog("STAT: %02d %s: got %d candidates\n", r->config->id, r->config->name, dwrk->finishnum);
     }
+
+#ifdef USE_MBR
+      if(r->config->mbr.use_mbr){
+       candidate_mbr(&r_start, &r_bottom, r_stacknum, r);
+      }
+#endif
+
       /* 結果はまだ出力されていないので，文候補用スタック内をソートして
 	 ここで出力する */
       /* As all of the found candidate are in result stack, we sort them

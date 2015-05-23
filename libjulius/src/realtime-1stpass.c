@@ -111,13 +111,13 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.14 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -164,7 +164,7 @@ init_param(MFCCCalc *mfcc)
 
   /* これから計算されるパラメータの型をヘッダに設定 */
   /* set header types */
-  mfcc->param->header.samptype = F_MFCC;
+  mfcc->param->header.samptype = para->basetype;
   if (para->delta) mfcc->param->header.samptype |= F_DELTA;
   if (para->acc) mfcc->param->header.samptype |= F_ACCL;
   if (para->energy) mfcc->param->header.samptype |= F_ENERGY;
@@ -274,7 +274,8 @@ RealTimeInit(Recog *recog)
     if (mfcc->cmn.load_filename) {
       if (para->cmn) {
 	if ((mfcc->cmn.loaded = CMN_load_from_file(mfcc->cmn.wrk, mfcc->cmn.load_filename))== FALSE) {
-	  jlog("WARNING: failed to read initial cepstral mean from \"%s\", do flat start\n", mfcc->cmn.load_filename);
+	  jlog("ERROR: failed to read initial cepstral mean from \"%s\", do flat start\n", mfcc->cmn.load_filename);
+	  return FALSE;
 	}
       } else {
 	jlog("WARNING: CMN not required on AM, file \"%s\" ignored\n", mfcc->cmn.load_filename);
@@ -774,9 +775,10 @@ proceed_one_frame(Recog *recog)
  * @param nowlen [in] length of above
  * @param recog [i/o] engine instance
  * 
- * @return -1 on error (tell caller to terminate), 0 on success (allow caller
- * to call me for the next segment).  It returns 1 when telling the caller to
- * terminate input and go on to the next pass.
+ * @return -1 on error (will close stream and terminate recognition),
+ * 0 on success (allow caller to call me for the next segment).  It
+ * returns 1 when telling the caller to segment now at the middle of
+ * input , and 2 when input length overflow is detected.
  * </EN>
  *
  * @callgraph
@@ -816,7 +818,10 @@ RealTimePipeLine(SP16 *Speech, int nowlen, Recog *recog) /* Speech[0...nowlen] =
     /* 入力長が maxframelen に達したらここで強制終了 */
     /* if input length reaches maximum buffer size, terminate 1st pass here */
     for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
-      if (mfcc->f >= r->maxframelen) return(1);
+      if (mfcc->f >= r->maxframelen) {
+	jlog("Warning: too long input (> %d frames), segment it now\n", r->maxframelen);
+	return(1);
+      }
     }
     /* 窓バッファを埋められるだけ埋める */
     /* fill window buffer as many as possible */
@@ -1160,6 +1165,12 @@ RealTimeParam(Recog *recog)
   /* loop until all data has been flushed */
   while (1) {
 
+    /* check frame overflow */
+    for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+      if (! mfcc->valid) continue;
+      if (mfcc->f >= r->maxframelen) mfcc->valid = FALSE;
+    }
+
     /* if all mfcc became invalid, exit loop here */
     ok_p = FALSE;
     for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
@@ -1320,7 +1331,6 @@ RealTimeParam(Recog *recog)
     for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
       if (! mfcc->valid) continue;
       mfcc->f++;
-      if (mfcc->f > r->maxframelen) mfcc->valid = FALSE;
     }
   }
 

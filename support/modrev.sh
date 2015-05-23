@@ -3,10 +3,6 @@
 # change version
 # (should be executed in the parent directory)
 #
-if [[ $# == 0 ]]; then
-	echo usage: $0 newversionname
-	exit
-fi
 newver=$1
 
 for i in ./libjulius/configure.in ./support/build-all.sh; do

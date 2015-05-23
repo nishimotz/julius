@@ -19,12 +19,12 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:22:36 2005
  *
- * $Revision: 1.7 $ 
+ * $Revision: 1.15 $ 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -33,18 +33,6 @@
 
 #include <sent/stddefs.h>
 #include <sent/speech.h>
-
-#if defined(HAVE_ALSA_ASOUNDLIB_H) || defined(HAVE_SYS_ASOUNDLIB_H)
-#define HAS_ALSA
-#endif
-#ifdef __linux__
-#if defined(HAVE_SYS_SOUNDCARD_H) || defined(HAVE_MACHINE_SOUNDCARD_H)
-#define HAS_OSS
-#endif
-#endif /* __linux__ */
-#ifdef HAVE_ESD_H
-#define HAS_ESD
-#endif
 
 /// Speech input type
 enum {
@@ -60,7 +48,8 @@ enum {
   SP_MFCFILE,			///< HTK parameter file
   SP_NETAUDIO,			///< Live NetAudio/DatLink input
   SP_STDIN,			///< Standard input
-  SP_MFCMODULE			///< parameter module
+  SP_MFCMODULE,			///< parameter module
+  SP_OUTPROBFILE
 };
 
 /// Input device
@@ -69,10 +58,8 @@ enum {
   SP_INPUT_ALSA,
   SP_INPUT_OSS,
   SP_INPUT_ESD,
+  SP_INPUT_PULSEAUDIO
 };
-
-/// Default unit size of speech input segment in bytes
-#define DEFAULT_WSTEP 1000
 
 /**
  * @def SUPPORTED_WAVEFILE_FORMAT
@@ -154,6 +141,9 @@ boolean adin_mic_standby(int freq, void *arg);
 boolean adin_mic_begin(char *pathname);
 boolean adin_mic_end();
 int adin_mic_read(SP16 *buf, int sampnum);
+boolean adin_mic_pause();
+boolean adin_mic_terminate();
+boolean adin_mic_resume();
 char *adin_mic_input_name();
 /* adin/adin_mic_linux_alsa.c */
 boolean adin_alsa_standby(int freq, void *arg);
@@ -173,6 +163,12 @@ boolean adin_esd_begin(char *pathname);
 boolean adin_esd_end();
 int adin_esd_read(SP16 *buf, int sampnum);
 char *adin_esd_input_name();
+/* adin/adin_pulseaudio.c */
+boolean adin_pulseaudio_standby(int freq, void *arg);
+boolean adin_pulseaudio_begin(char *pathname);
+boolean adin_pulseaudio_end();
+int adin_pulseaudio_read(SP16 *buf, int sampnum);
+char *adin_pulseaudio_input_name();
 /* adin/adin_netaudio.c  and adin/adin_na.c */
 boolean adin_netaudio_standby(int freq, void *arg);
 boolean adin_netaudio_begin(char *pathname);

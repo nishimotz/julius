@@ -41,6 +41,9 @@ DESCRIPTION
        なお，mkbingram は gzip 圧縮された ARPA ファイルもそのまま読み込めま
        す．
 
+       また，バージョン 4.2.3よりバイナリN-gram内の文字コードの変換が可 能にな
+       りました．
+
        バージョン 3.x 以前で作成したバイナリN-gramは，そのまま 4.0 でも読めま
        す．mkbingram に -d で与えることで，古いバイナリ形式 を新しいバイナリ形
        式に変換することもできます．なお，4.0 以降の mkbingram で作成したバイナ
@@ -49,16 +52,23 @@ DESCRIPTION
 
 OPTIONS
         -nlr  forward_ngram.arpa
-          前向き（left-to-right）のARPA形式 N-gram ファイルを読み込む
+           前向き（left-to-right）のARPA形式 N-gram ファイルを読み込む
 
         -nrl  backward_ngram.arpa
-          後ろ向き（right-to-left）のARPA形式 N-gram ファイルを読み込む
+           後ろ向き（right-to-left）のARPA形式 N-gram ファイルを読み込む
 
         -d  old_bingram_file
-          バイナリN-gramを読み込む（古いバイナリ形式の変換用）
+           バイナリN-gramを読み込む（古いバイナリ形式の変換用）
+
+        -swap
+           文頭記号 <s> と文末記号 </s> を入れ替える．
+
+        -c  from to
+           バイナリN-gram内の文字コードを変換する．（from, toは文字コードを表
+           す文字列）
 
        output_bingram_file
-          出力先のバイナリN-gramファイル名
+           出力先のバイナリN-gramファイル名
 
 EXAMPLES
        ARPA形式の N-gram をバイナリ形式に変換する（前向き+後ろ向き）：
@@ -70,17 +80,17 @@ SEE ALSO
         mkbinhmm ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1991-2008 京都大学 河原研究室
+       Copyright (c) 1991-2013 京都大学 河原研究室
 
        Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
 
-       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+       Copyright (c) 2000-2005 奈良先端科学技術大学院大学 鹿野研究室
 
-       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
+       Copyright (c) 2005-2013 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-                                  10/02/2008                      MKBINGRAM(1)
+                                  19/12/2013                      MKBINGRAM(1)

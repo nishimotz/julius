@@ -20,13 +20,13 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.14 $
+ * $Revision: 1.29 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -89,6 +89,17 @@ initialize_HMM(JCONF_AM *amconf, Jconf *jconf)
     hmminfo_free(hmminfo);
     return NULL;
   }
+  if (debug2_flag) {
+    HTK_HMM_Data *dtmp;
+    int i;
+    for (dtmp = hmminfo->start; dtmp; dtmp = dtmp->next) {
+      printf("***\nname: %s\n", dtmp->name);
+      for (i=0;i<dtmp->state_num;i++) {
+	if (dtmp->s[i] == NULL) continue;
+	printf("state %d: id=%d   %s\n", i + 1, dtmp->s[i]->id, (dtmp->s[i]->name) ? dtmp->s[i]->name : "");
+      }
+    }
+  }
 
   /* set multipath mode flag */
   if (amconf->force_multipath) {
@@ -104,8 +115,13 @@ initialize_HMM(JCONF_AM *amconf, Jconf *jconf)
   if (jconf->input.type == INPUT_WAVEFORM) {
     /* Decode parameter extraction type according to the training
        parameter type in the header of the given acoustic HMM */
-    if ((hmminfo->opt.param_type & F_BASEMASK) != F_MFCC) {
-      jlog("ERROR: m_fusion: for direct speech input, only HMM trained by MFCC is supported\n");
+    switch(hmminfo->opt.param_type & F_BASEMASK) {
+    case F_MFCC:
+    case F_FBANK:
+    case F_MELSPEC:
+      break;
+    default:
+      jlog("ERROR: m_fusion: for direct speech input, only HMM trained by MFCC ior filterbank is supported\n");
       hmminfo_free(hmminfo);
       return NULL;
     }
@@ -122,12 +138,17 @@ initialize_HMM(JCONF_AM *amconf, Jconf *jconf)
 #ifdef PASS1_IWCD
   /* make state clusters of same context for inter-word triphone approx. */
   if (hmminfo->is_triphone) {
-    jlog("STAT: making pseudo bi/mono-phone for IW-triphone\n");
-    if (make_cdset(hmminfo) == FALSE) {
-      jlog("ERROR: m_fusion: failed to make context-dependent state set\n");
-      hmminfo_free(hmminfo);
-      return NULL;
+    if (hmminfo->cdset_root == NULL) {
+      jlog("STAT: making pseudo bi/mono-phone for IW-triphone\n");
+      if (make_cdset(hmminfo) == FALSE) {
+	jlog("ERROR: m_fusion: failed to make context-dependent state set\n");
+	hmminfo_free(hmminfo);
+	return NULL;
+      }
+    } else {
+      jlog("STAT: pseudo phones are loaded from binary hmmlist file\n");
     }
+
     /* add those `pseudo' biphone and monophone to the logical HMM names */
     /* they points not to the defined HMM, but to the CD_Set structure */
     hmm_add_pseudo_phones(hmminfo);
@@ -231,8 +252,13 @@ initialize_GMM(Jconf *jconf)
   if (jconf->input.type == INPUT_WAVEFORM) {
     /* Decode parameter extraction type according to the training
        parameter type in the header of the given acoustic HMM */
-    if ((gmm->opt.param_type & F_BASEMASK) != F_MFCC) {
-      jlog("ERROR: m_fusion: for direct speech input, only GMM trained by MFCC is supported\n");
+    switch(gmm->opt.param_type & F_BASEMASK) {
+    case F_MFCC:
+    case F_FBANK:
+    case F_MELSPEC:
+      break;
+    default:
+      jlog("ERROR: m_fusion: for direct speech input, only GMM trained by MFCC ior filterbank is supported\n");
       hmminfo_free(gmm);
       return NULL;
     }
@@ -285,6 +311,9 @@ static WORD_INFO *
 initialize_dict(JCONF_LM *lmconf, HTK_HMM_INFO *hmminfo)
 {
   WORD_INFO *winfo;
+  JCONF_LM_NAMELIST *nl;
+  char buf[MAXLINELEN];
+  int n;
 
   /* allocate new word dictionary */
   winfo = word_info_new();
@@ -300,6 +329,50 @@ initialize_dict(JCONF_LM *lmconf, HTK_HMM_INFO *hmminfo)
     jlog("ERROR: m_fusion: failed to read dictionary, terminated\n");
     word_info_free(winfo);
     return NULL;
+  }
+
+  /* load additional entries */
+  for (nl = lmconf->additional_dict_files; nl; nl=nl->next) {
+    FILE *fp;
+    if ((fp = fopen(nl->name, "rb")) == NULL) {
+      jlog("ERROR: m_fusion: failed to open %s\n",nl->name);
+      word_info_free(winfo);
+      return NULL;
+    }
+    n = winfo->num;
+    while (getl_fp(buf, MAXLINELEN, fp) != NULL) {
+      if (voca_load_line(buf, winfo, hmminfo) == FALSE) break;
+    }
+    if (voca_load_end(winfo) == FALSE) {
+      if (lmconf->forcedict_flag) {
+	jlog("Warning: m_fusion: the error words above are ignored\n");
+      } else {
+	jlog("ERROR: m_fusion: error in reading dictionary %s\n", nl->name);
+	fclose(fp);
+	word_info_free(winfo);
+	return NULL;
+      }
+    }
+    if (fclose(fp) == -1) {
+      jlog("ERROR: m_fusion: failed to close %s\n", nl->name);
+      word_info_free(winfo);
+      return NULL;
+    }
+    jlog("STAT: + additional dictionary: %s (%d words)\n", nl->name, winfo->num - n);
+  }
+  n = winfo->num;
+  for (nl = lmconf->additional_dict_entries; nl; nl=nl->next) {
+    if (voca_load_line(nl->name, winfo, hmminfo) == FALSE) {
+      jlog("ERROR: m_fusion: failed to set entry: %s\n", nl->name);
+    }
+  }
+  if (lmconf->additional_dict_entries) {
+    if (voca_load_end(winfo) == FALSE) {
+      jlog("ERROR: m_fusion: failed to read additinoal word entry\n");
+      word_info_free(winfo);
+      return NULL;
+    }
+    jlog("STAT: + additional entries: %d words\n", winfo->num - n);
   }
 
   if (lmconf->lmtype == LM_PROB) {
@@ -409,7 +482,9 @@ initialize_ngram(JCONF_LM *lmconf, WORD_INFO *winfo)
   }
 
   /* set unknown (=OOV) word id */
-  set_unknown_id(ngram, lmconf->unknown_name);
+  if (strcmp(lmconf->unknown_name, UNK_WORD_DEFAULT)) {
+    set_unknown_id(ngram, lmconf->unknown_name);
+  }
 
   /* map dict item to N-gram entry */
   if (make_voca_ref(ngram, winfo) == FALSE) {
@@ -976,7 +1051,9 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
       }
       p->am->hmminfo->iwsp_penalty = p->am->config->iwsp_penalty;
     } else {
-      jlog("Warning: \"-iwsp\" is supported on multi-path mode, ignored\n");
+      jlog("ERROR: \"-iwsp\" needs multi-path mode\n");
+      jlog("ERROR: you should use multi-path AM, or specify \"-multipath\" with \"-iwsp\"\n");
+      return FALSE;
     }
   }
 
@@ -1261,6 +1338,11 @@ j_final_fusion(Recog *recog)
 	return FALSE;
       }
     }
+    /* when "-outprobout" is specified, ask the state computation
+       module to force calculatation of ALL the states at each
+       frame */
+    outprob_set_batch_computation(&(am->hmmwrk), (recog->jconf->outprob_outfile != NULL) ? TRUE : FALSE);
+
   }
 
   /* stage 5: initialize work area for input and realtime decoding */
@@ -1310,6 +1392,25 @@ j_final_fusion(Recog *recog)
     }
   }
 
+  /* initialize CMN and CVN calculation work area for batch computation */
+  if (! recog->jconf->decodeopt.realtime_flag) {
+    if (recog->jconf->input.type == INPUT_WAVEFORM) {
+      for(mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+	if (mfcc->cmn.load_filename) {
+	  if (mfcc->para->cmn || mfcc->para->cvn) {
+	    mfcc->cmn.wrk = CMN_realtime_new(mfcc->para, mfcc->cmn.map_weight);
+	    if ((mfcc->cmn.loaded = CMN_load_from_file(mfcc->cmn.wrk, mfcc->cmn.load_filename))== FALSE) {
+	      jlog("ERROR: m_fusion: failed to read initial cepstral mean from \"%s\"\n", mfcc->cmn.load_filename);
+	      return FALSE;
+	    }
+	  } else {
+	    jlog("WARNING: m_fusion: CMN load file specified but AM not require it, ignored\n");
+	  }
+	}
+      }
+    }
+  }
+
   /* finished! */
   jlog("STAT: All init successfully done\n\n");
 
@@ -1320,6 +1421,95 @@ j_final_fusion(Recog *recog)
     return FALSE;
   }
 #endif
+
+  return TRUE;
+}
+
+/** 
+ * <EN>
+ * @brief  Reload dictionaries.
+ *
+ * This function reload dictionaries and re-create all the recognition
+ * process.
+ *
+ * @param recog [i/o] engine instance
+ * @param lm [i/o] LM instance to reload
+ * 
+ * @return TRUE on success, or FALSE on error.
+ * 
+ */
+boolean
+j_reload_adddict(Recog *recog, PROCESS_LM *lm)
+{
+  RecogProcess *p, *ptmp;
+  JCONF_SEARCH *sh;
+  PROCESS_AM *am, *atmp;
+  
+  jlog("STAT: *** reloading (additional) dictionary of LM%02d %s\n", lm->config->id, lm->config->name);
+
+  /* free current dictionary */
+  if (lm->winfo) word_info_free(lm->winfo);
+  if (lm->grammars) multigram_free_all(lm->grammars);
+  if (lm->dfa) dfa_info_free(lm->dfa);
+
+  /* free all current process instanfces */
+  p = recog->process_list;
+  while(p) {
+    ptmp = p->next;
+    j_recogprocess_free(p);
+    p = ptmp;
+  }
+  recog->process_list = NULL;
+
+  /* reload dictionary */
+  if (lm->lmtype == LM_PROB) {
+
+    if ((lm->winfo = initialize_dict(lm->config, lm->am->hmminfo)) == NULL) {
+      jlog("ERROR: m_fusion: failed to reload dictionary\n");
+      return FALSE;
+    }
+    if (lm->config->ngram_filename_lr_arpa || lm->config->ngram_filename_rl_arpa || lm->config->ngram_filename) {
+      /* re-map dict item to N-gram entry */
+      if (make_voca_ref(lm->ngram, lm->winfo) == FALSE) {
+	jlog("ERROR: m_fusion: failed to map words in additional dictionary to N-gram\n");
+	return FALSE;
+      }
+    }
+  }
+  if (lm->lmtype == LM_DFA) {
+    /* DFA */
+    if (lm->config->dfa_filename != NULL && lm->config->dictfilename != NULL) {
+      /* here add grammar specified by "-dfa" and "-v" to grammar list */
+      multigram_add_gramlist(lm->config->dfa_filename, lm->config->dictfilename, lm->config, LM_DFA_GRAMMAR);
+    }
+    /* load all the specified grammars */
+    if (multigram_load_all_gramlist(lm) == FALSE) {
+      jlog("ERROR: m_fusion: some error occured in reading grammars\n");
+      return FALSE;
+    }
+    /* setup for later wchmm building */
+    multigram_update(lm);
+    /* the whole lexicon will be forced to built in the boot sequence,
+       so reset the global modification flag here */
+    lm->global_modified = FALSE;
+  }
+
+  /* re-create all recognition process instance */
+  for(sh=recog->jconf->search_root;sh;sh=sh->next) {
+    if (j_launch_recognition_instance(recog, sh) == FALSE) {
+      jlog("ERROR: m_fusion: failed to re-start recognizer instance \"%s\"\n", sh->name);
+      return FALSE;
+    }
+  }
+
+  /* the created process will be live=FALSE, active = 1, so
+     the new recognition instance is dead now but
+     will be made live at next session */
+
+  /* tell engine to update */
+  recog->process_want_reload = TRUE;
+
+  jlog("STAT: *** LM%02d %s additional dictionary reloaded\n", lm->config->id, lm->config->name);
 
   return TRUE;
 }

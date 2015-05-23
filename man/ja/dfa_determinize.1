@@ -1,50 +1,67 @@
+'\" t
 .\"     Title: 
     dfa_determinize
   
 .\"    Author: 
-.\" Generator: DocBook XSL Stylesheets v1.71.0 <http://docbook.sf.net/>
-.\"      Date: 10/02/2008
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 19/12/2013
 .\"    Manual: 
 .\"    Source: 
+.\"  Language: Japanese
 .\"
-.TH "DFA_DETERMINIZE" "1" "10/02/2008" "" ""
+.TH "DFA_DETERMINIZE" "1" "19/12/2013" ""
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
 .\" disable hyphenation
 .nh
 .\" disable justification (adjust text to left margin only)
 .ad l
-.SH "Ì¾Á°"
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "åå‰"
 
     dfa_determinize
-   \- Í­¸Â¥ª¡¼¥È¥Ş¥È¥óÊ¸Ë¡¤ò·èÄê²½¤¹¤ë
-.SH "³µÍ×"
-.HP 16
+   \- æœ‰é™ã‚ªãƒ¼ãƒˆãƒãƒˆãƒ³æ–‡æ³•ã‚’æ±ºå®šåŒ–ã™ã‚‹
+.SH "æ¦‚è¦"
+.HP \w'\fBdfa_determinize\fR\ 'u
 \fBdfa_determinize\fR [\-o\ \fIoutfile\fR] {dfafile}
 .SH "DESCRIPTION"
 .PP
-dfa_determinize ¤Ï¡¤.dfa ¥Õ¥¡¥¤¥ë¤òÅù²Á¤Ê·èÄêÀ­ .dfa ¥Õ¥¡¥¤¥ë¤ËÊÑ´¹¤·¡¤ É¸½à½ĞÎÏ¤Ë½ĞÎÏ¤·¤Ş¤¹¡¥¥ª¥×¥·¥ç¥ó
+dfa_determinize ã¯ï¼Œ\&.dfa ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ç­‰ä¾¡ãªæ±ºå®šæ€§ \&.dfa ãƒ•ã‚¡ã‚¤ãƒ«ã«å¤‰æ›ã—ï¼Œ æ¨™æº–å‡ºåŠ›ã«å‡ºåŠ›ã—ã¾ã™ï¼ã‚ªãƒ—ã‚·ãƒ§ãƒ³
 \fB\-o\fR
-¤Ç½ĞÎÏÀè¤ò »ØÄê¤¹¤ë¤³¤È¤â¤Ç¤­¤Ş¤¹¡¥
+ã§å‡ºåŠ›å…ˆã‚’ æŒ‡å®šã™ã‚‹ã“ã¨ã‚‚ã§ãã¾ã™ï¼
 .PP
 
-\fBmkdfa.pl\fR
-¤¬À¸À®¤¹¤ëDFA¤Ï¾ï¤Ë·èÄê²½¤µ¤ì¤Æ¤ª¤ê¡¤ ÄÌ¾ï¡¤\fBmkdfa.pl\fR
-¤ÇºîÀ®¤µ¤ì¤¿ .dfa ¥Õ¥¡¥¤¥ë¤ËÂĞ¤·¤Æ ¤³¤Î¥Ä¡¼¥ë¤ò»È¤¦É¬Í×¤Ï¤¢¤ê¤Ş¤»¤ó¡¥
+\fBmkdfa\&.pl\fR
+ãŒç”Ÿæˆã™ã‚‹DFAã¯å¸¸ã«æ±ºå®šåŒ–ã•ã‚Œã¦ãŠã‚Šï¼Œ é€šå¸¸ï¼Œ\fBmkdfa\&.pl\fR
+ã§ä½œæˆã•ã‚ŒãŸ \&.dfa ãƒ•ã‚¡ã‚¤ãƒ«ã«å¯¾ã—ã¦ ã“ã®ãƒ„ãƒ¼ãƒ«ã‚’ä½¿ã†å¿…è¦ã¯ã‚ã‚Šã¾ã›ã‚“ï¼
 .SH "OPTIONS"
 .PP
 \fB \-o \fR \fIoutfile\fR
-.RS 3n
-½ĞÎÏ¥Õ¥¡¥¤¥ëÌ¾¤ò»ØÄê¤¹¤ë¡¥
+.RS 4
+å‡ºåŠ›ãƒ•ã‚¡ã‚¤ãƒ«åã‚’æŒ‡å®šã™ã‚‹ï¼
 .RE
 .SH "EXAMPLES"
 .PP
 
-\fIfoo.dfa\fR
-¤ò·èÄê²½¤·¤Æ
-\fIbar.dfa\fR
-¤Ë ÊİÂ¸¤¹¤ë¡¥
-.sp .RS 3n .nf % \fBdfa_determinize\fR \-o bar.dfa foo.dfa .fi .RE
-ÊÌ¤ÎÊıË¡¡§
-.sp .RS 3n .nf % \fBdfa_determinize\fR < foo.dfa > bar.dfa .fi .RE
+foo\&.dfa
+ã‚’æ±ºå®šåŒ–ã—ã¦
+bar\&.dfa
+ã« ä¿å­˜ã™ã‚‹ï¼
+.sp .if n \{\ .RS 4 .\} .nf % \fBdfa_determinize\fR \-o bar\&.dfa foo\&.dfa .fi .if n \{\ .RE .\}
+åˆ¥ã®æ–¹æ³•ï¼š
+.sp .if n \{\ .RS 4 .\} .nf % \fBdfa_determinize\fR < foo\&.dfa > bar\&.dfa .fi .if n \{\ .RE .\}
 .SH "SEE ALSO"
 .PP
 
@@ -53,13 +70,13 @@ dfa_determinize ¤Ï¡¤.dfa ¥Õ¥¡¥¤¥ë¤òÅù²Á¤Ê·èÄêÀ­ .dfa ¥Õ¥¡¥¤¥ë¤ËÊÑ´¹¤·¡¤ É¸½à½ĞÎÏ
 \fB dfa_minimize \fR( 1 )
 .SH "COPYRIGHT"
 .PP
-Copyright (c) 1991\-2008 µşÅÔÂç³Ø ²Ï¸¶¸¦µæ¼¼
+Copyright (c) 1991\-2013 äº¬éƒ½å¤§å­¦ æ²³åŸç ”ç©¶å®¤
 .PP
-Copyright (c) 1997\-2000 ¾ğÊó½èÍı¿¶¶½»ö¶È¶¨²ñ(IPA)
+Copyright (c) 1997\-2000 æƒ…å ±å‡¦ç†æŒ¯èˆˆäº‹æ¥­å”ä¼š(IPA)
 .PP
-Copyright (c) 2000\-2008 ÆàÎÉÀèÃ¼²Ê³Øµ»½ÑÂç³Ø±¡Âç³Ø ¼¯Ìî¸¦µæ¼¼
+Copyright (c) 2000\-2005 å¥ˆè‰¯å…ˆç«¯ç§‘å­¦æŠ€è¡“å¤§å­¦é™¢å¤§å­¦ é¹¿é‡ç ”ç©¶å®¤
 .PP
-Copyright (c) 2005\-2008 Ì¾¸Å²°¹©¶ÈÂç³Ø Julius³«È¯¥Á¡¼¥à
+Copyright (c) 2005\-2013 åå¤å±‹å·¥æ¥­å¤§å­¦ Juliusé–‹ç™ºãƒãƒ¼ãƒ 
 .SH "LICENSE"
 .PP
-Julius ¤Î»ÈÍÑµöÂú¤Ë½à¤¸¤Ş¤¹¡¥
+Julius ã®ä½¿ç”¨è¨±è«¾ã«æº–ã˜ã¾ã™ï¼

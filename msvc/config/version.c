@@ -2,8 +2,8 @@
  * @file   version.c
  * 
  * <JA>
- * @brief  •–°º•∏•Á•Û§™§Ë§”•≥•Û•—•§•ÅE˛¿ﬂƒÍ§ŒΩ–Œœ
- *
+ * @brief  •–°º•∏•Á•Û§™§Ë§”•≥•Û•—•§•Îª˛¿ﬂƒÍ§ŒΩ–Œœ
+ * 
  * </JA>
  * 
  * <EN>
@@ -14,13 +14,13 @@
  * @author Akinobu Lee
  * @date   Mon Sep 12 01:34:15 2005
  *
- * $Revision: 1.1 $
+ * $Revision: 1.5 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -33,9 +33,10 @@
 
 /** 
  * <JA>
- * •ÿ•√•¿§ÚΩ–Œœ§π§ÅE 
+ * •ÿ•√•¿§ÚΩ–Œœ§π§Î
  * 
- * @param strm [in] Ω–Œœ•π•»•Í°º•ÅE * </JA>
+ * @param strm [in] Ω–Œœ•π•»•Í°º•‡
+ * </JA>
  * <EN>
  * Output application header.
  * 
@@ -50,8 +51,10 @@ j_put_header(FILE *strm){
 
 /** 
  * <JA>
- * •–°º•∏•Á•Ûæ Û§ÚΩ–Œœ§π§ÅE * 
- * @param strm [in] Ω–Œœ•π•»•Í°º•ÅE * </JA>
+ * •–°º•∏•Á•Ûæ Û§ÚΩ–Œœ§π§Î
+ * 
+ * @param strm [in] Ω–Œœ•π•»•Í°º•‡
+ * </JA>
  * <EN>
  * Output version information.
  * 
@@ -63,17 +66,18 @@ j_put_version(FILE *strm){
   if (strm == NULL) return;
   fprintf(strm,"\n%s rev.%s (%s)  built for %s\n\n",
 	  JULIUS_PRODUCTNAME, JULIUS_VERSION, JULIUS_SETUP, JULIUS_HOSTINFO);
-  fprintf(strm,"Copyright (c) 1991-2009 Kawahara Lab., Kyoto University\n");
+  fprintf(strm,"Copyright (c) 1991-2013 Kawahara Lab., Kyoto University\n");
   fprintf(strm,"Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan\n");
   fprintf(strm,"Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology\n");
-  fprintf(strm,"Copyright (c) 2005-2009 Julius project team, Nagoya Institute of Technology\n\n");
+  fprintf(strm,"Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology\n\n");
 }
 
 /** 
  * <JA>
- * •≥•Û•—•§•ÅE˛§Œ¿ﬂƒÍ§ÚΩ–Œœ§π§ÅE 
+ * •≥•Û•—•§•Îª˛§Œ¿ﬂƒÍ§ÚΩ–Œœ§π§Î°•
  * 
- * @param strm [in] ∆˛Œœ•π•»•Í°º•ÅE * </JA>
+ * @param strm [in] ∆˛Œœ•π•»•Í°º•‡
+ * </JA>
  * <EN>
  * Output compile-time settings.
  * 
@@ -233,8 +237,10 @@ j_put_compile_defs(FILE *strm){
 
 /** 
  * <JA>
- * •È•§•÷•È•Í§Œ¿ﬂƒÍ§ÚΩ–Œœ§π§ÅE * 
- * @param strm [in] Ω–Œœ•π•»•Í°º•ÅE * </JA>
+ * •È•§•÷•È•Í§Œ¿ﬂƒÍ§ÚΩ–Œœ§π§Î
+ * 
+ * @param strm [in] Ω–Œœ•π•»•Í°º•‡
+ * </JA>
  * <EN>
  * Output library configuration.
  * 

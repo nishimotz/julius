@@ -12,13 +12,13 @@
  * @author Akinobu Lee
  * @date   Wed Dec 12 11:07:46 2007
  * 
- * $Revision: 1.2 $
+ * $Revision: 1.8 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -104,6 +104,9 @@ outfile_sentence(Recog *recog, void *dummy)
       case J_RESULT_STATUS_REJECT_SHORT:
 	fprintf(fp, "<input rejected by short input>\n");
 	break;
+      case J_RESULT_STATUS_REJECT_LONG:
+	fprintf(fp, "<input rejected by long input>\n");
+	break;
       case J_RESULT_STATUS_FAIL:
 	fprintf(fp, "<search failed>\n");
 	break;
@@ -148,6 +151,13 @@ outfile_sentence(Recog *recog, void *dummy)
       }
       fprintf(fp, "\n");  
 #endif
+#ifdef USE_MBR
+      if(r->config->mbr.use_mbr == TRUE){
+
+	fprintf(fp, "MBRscore%d: %f\n", n+1, s->score_mbr);
+      }
+#endif
+
       fprintf(fp, "score%d: %f", n+1, s->score);
       if (r->lmtype == LM_PROB) {
 	fprintf(fp, " (AM: %f  LM: %f)", s->score_am, s->score_lm);

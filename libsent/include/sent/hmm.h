@@ -21,13 +21,13 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 14:54:06 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.7 $
  *
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -111,6 +111,7 @@ LOGPROB viterbi_segment(HMM *hmm, HTK_Param *param, HMMWork *wrk, boolean multip
 
 /* hmminfo/outprob.c */
 LOGPROB outprob(HMMWork *wrk, int t, HMM_STATE *hmmstate, HTK_Param *param);
+
 /* hmminfo/put_htkdata_info */
 void put_hmm_arc(FILE *fp, HMM *d);
 void put_hmm_outprob(FILE *fp, HMM *d);

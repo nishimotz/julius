@@ -21,11 +21,11 @@
  * @author Akinobu LEE
  * @date   Thu Feb 24 00:18:22 2011
  *
- * $Revision: 1.1 $
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 2010-2011 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2010-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

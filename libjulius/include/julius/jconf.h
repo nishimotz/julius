@@ -23,13 +23,13 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.8 $
+ * $Revision: 1.20 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -220,6 +220,22 @@ typedef struct __jconf_am__ {
 } JCONF_AM;
 
 /**
+ * Name lister for language model configurations
+ * 
+ */
+typedef struct __jconf_lm_namelist__ {
+  /**
+   * Entry name
+   */
+  char *name;
+  /**
+   * Pointer to next object
+   */
+  struct __jconf_lm_namelist__ *next;
+
+} JCONF_LM_NAMELIST;
+
+/**
  * Language models (N-gram / DFA), dictionary, and related parameters.
  * 
  */
@@ -340,6 +356,16 @@ typedef struct __jconf_lm__ {
   char unknown_name[UNK_WORD_MAXLEN];
 
   /**
+   * List of additional dictionary files
+   */
+  JCONF_LM_NAMELIST *additional_dict_files;
+
+  /**
+   * List of additional dictionary entries
+   */
+  JCONF_LM_NAMELIST *additional_dict_entries;
+
+  /**
    * Pointer to next instance
    * 
    */
@@ -444,11 +470,20 @@ typedef struct __jconf_search__ {
    */
   struct {
     /**
-     * Beam width of 1st pass. If value is -1 (not specified), system
-     * will guess the value from dictionary size.  If 0, a possible
-     * maximum value will be assigned to do full search.
+     * Beam width of rank pruning for the 1st pass. If value is -1
+     * (not specified), system will guess the value from dictionary
+     * size.  If 0, a possible maximum value will be assigned to do
+     * full search.
      */
     int specified_trellis_beam_width;
+
+#ifdef SCORE_PRUNING
+    /**
+     * Another beam width for score pruning at the 1st pass. If value
+     * is -1, or not specified, score pruning will be disabled.
+     */
+#endif
+    LOGPROB score_pruning_width;
     
 #if defined(WPAIR) && defined(WPAIR_KEEP_NLIMIT)
     /**
@@ -756,6 +791,24 @@ typedef struct __jconf_search__ {
     
   } sw;
 
+#ifdef USE_MBR
+  struct {
+
+    /* Rescoring sentence on MBR (-mbr) */
+    boolean use_mbr;
+
+    /* Use word weight on MBR (-mbr_wwer) */
+    boolean use_word_weight;
+
+    /* Likelihood weight */
+    float score_weight;
+
+    /* Loss function weight */
+    float loss_weight;
+
+  } mbr;
+#endif
+
   /* pointer to next instance */
   struct __jconf_search__ *next;
 
@@ -800,12 +853,12 @@ typedef struct __Jconf__ {
      * Sampling frequency
      * 
      */
-    long sfreq;
+    int sfreq;
     /**
      * Sampling period in 100ns units
      * 
      */
-    long period;
+    int period;
     /**
      * Window size in samples, similar to WINDOWSIZE in HTK (unit is different)
      * 
@@ -869,6 +922,12 @@ typedef struct __Jconf__ {
      * (-cutsilence / -nocutsilence)
      */
     int silence_cut;
+    /**
+     * Chunk size in samples, i.e. processing unit for audio input
+     * detection.  Segmentation will be done by this unit.
+     * 
+     */
+    int chunk_size;
 #ifdef GMM_VAD
     /**
      * (GMM_VAD) Backstep margin when speech trigger is detected.
@@ -914,6 +973,11 @@ typedef struct __Jconf__ {
      */
     boolean use_zmean;
 
+    /**
+     * Input level scaling factor (-lvscale)
+     */
+    float level_coef;
+
   } preprocess;
 
   /**
@@ -937,6 +1001,10 @@ typedef struct __Jconf__ {
      * Length threshold to reject input (-rejectshort)
      */
     int rejectshortlen;
+    /**
+     * Length threshold to reject input (-rejectlong)
+     */
+    int rejectlonglen;
 #ifdef POWER_REJECT
     /**
      * Rejection power threshold
@@ -1033,6 +1101,11 @@ typedef struct __Jconf__ {
    */
   boolean optsectioning;
 
+  /*
+   * Filename to save state probability output
+   *
+   */
+  char *outprob_outfile;
 
 } Jconf;
 

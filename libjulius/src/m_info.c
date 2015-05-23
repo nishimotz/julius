@@ -12,13 +12,13 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.23 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -131,6 +131,100 @@ print_jconf_overview(Jconf *jconf)
 }
 
 
+/**
+ * Output feature parameter processing information to log.
+ *
+ * @param mfcc [in] MFCC instance
+ *
+ * @callgraph
+ * @callergraph
+ */
+void
+print_mfcc_info(FILE *fp, MFCCCalc *mfcc, Jconf *jconf)
+{
+  put_para(fp, mfcc->para);
+
+  jlog("\n");
+
+  if (jconf->input.type == INPUT_WAVEFORM) {
+    jlog("    spectral subtraction = ");
+    if (mfcc->frontend.ssload_filename || mfcc->frontend.sscalc) {
+      if (mfcc->frontend.sscalc) {
+	jlog("use head silence of each input\n");
+	jlog("\t     head sil length = %d msec\n", mfcc->frontend.sscalc_len);
+      } else {			/* ssload_filename != NULL */
+	jlog("use a constant value from file\n");
+	jlog("         noise spectrum file = \"%s\"\n", mfcc->frontend.ssload_filename);
+      }
+      jlog("\t         alpha coef. = %f\n", mfcc->frontend.ss_alpha);
+      jlog("\t      spectral floor = %f\n", mfcc->frontend.ss_floor);
+    } else {
+      jlog("off\n");
+    }
+  }
+  jlog("\n");
+  jlog(" cep. mean normalization = ");
+  if (mfcc->para->cmn) {
+    jlog("yes, ");
+    if (jconf->decodeopt.realtime_flag) {
+      jlog("real-time MAP-CMN, updating mean with last %.1f sec. input\n");
+      jlog("  initial mean from file = ");
+      if (mfcc->cmn.loaded) {
+	jlog("%s\n", mfcc->cmn.load_filename);
+      } else {
+	jlog("N/A\n");
+      }
+      jlog("   beginning data weight = %6.2f\n", mfcc->cmn.map_weight);
+    } else {
+      if (mfcc->cmn.loaded) {
+	jlog("with a static mean\n");
+	jlog("   static mean from file = %s\n", mfcc->cmn.load_filename);
+      } else {
+	jlog("with per-utterance self mean\n");
+      }
+    }
+  } else {
+    jlog("no\n");
+  }
+  jlog(" cep. var. normalization = ");
+  if (mfcc->para->cvn) {
+    jlog("yes, ");
+    if (mfcc->cmn.loaded) {
+      jlog("with a static variance\n");
+      jlog("static variance from file = %s\n", mfcc->cmn.load_filename);
+    } else {
+      if (jconf->decodeopt.realtime_flag) {
+	jlog("estimating long-term variance from all speech input from start\n");
+      } else {
+	jlog("with per-utterance self variance\n");
+      }
+    }
+  } else {
+    jlog("no\n");
+  }
+  if (mfcc->cmn.save_filename) {
+    jlog("        save cep. data to = \"%s\", update at the end of each input\n", mfcc->cmn.save_filename);
+  }
+  jlog("\n");
+  
+  jlog("\t base setup from =");
+  if (mfcc->htk_loaded == 1 || mfcc->hmm_loaded == 1) {
+    if (mfcc->hmm_loaded == 1) {
+      jlog(" binhmm-embedded");
+      if (mfcc->htk_loaded == 1) {
+	jlog(", then overridden by HTK Config and defaults");
+      }
+    } else {
+      if (mfcc->htk_loaded == 1) {
+	jlog(" HTK Config (and HTK defaults)");
+      }
+    }
+  } else {
+    jlog(" Julius defaults");
+  }
+  jlog("\n");
+}
+
 
 /** 
  * <JA>
@@ -190,86 +284,10 @@ print_engine_info(Recog *recog)
       }
       jlog("\n\n");
 
-      put_para(fp, mfcc->para);
-
-      if (jconf->input.type == INPUT_WAVEFORM) {
-	jlog("    spectral subtraction = ");
-	if (mfcc->frontend.ssload_filename || mfcc->frontend.sscalc) {
-	  if (mfcc->frontend.sscalc) {
-	    jlog("use head silence of each input\n");
-	    jlog("\t     head sil length = %d msec\n", mfcc->frontend.sscalc_len);
-	  } else {			/* ssload_filename != NULL */
-	    jlog("use a constant value from file\n");
-	    jlog("         noise spectrum file = \"%s\"\n", mfcc->frontend.ssload_filename);
-	  }
-	  jlog("\t         alpha coef. = %f\n", mfcc->frontend.ss_alpha);
-	  jlog("\t      spectral floor = %f\n", mfcc->frontend.ss_floor);
-	} else {
-	  jlog("off\n");
-	}
-      }
-      jlog("  cepstral normalization = ");
-      if (mfcc->para->cmn || mfcc->para->cvn) {
-	if (jconf->decodeopt.realtime_flag) {
-	  jlog("real-time MAP-");
-	} else {
-	  jlog("sentence ");
-	}
-	if (mfcc->para->cmn) {
-	  jlog("CMN");
-	}
-	if (mfcc->para->cmn && mfcc->para->cvn) {
-	  jlog("+");
-	}
-	if (mfcc->para->cvn) {
-	  jlog("CVN");
-	}
-	jlog("\n");
-      } else {
-	jlog("no\n");
-      }
-      jlog("\t base setup from =");
-      if (mfcc->htk_loaded == 1 || mfcc->hmm_loaded == 1) {
-	if (mfcc->hmm_loaded == 1) {
-	  jlog(" binhmm-embedded");
-	  if (mfcc->htk_loaded == 1) {
-	    jlog(", then overridden by HTK Config and defaults");
-	  }
-	} else {
-	  if (mfcc->htk_loaded == 1) {
-	    jlog(" HTK Config (and HTK defaults)");
-	  }
-	}
-      } else {
-	jlog(" Julius defaults");
-      }
-      jlog("\n");
+      print_mfcc_info(fp, mfcc, jconf);
 
       jlog("\n");
 
-      if (jconf->decodeopt.realtime_flag && (mfcc->para->cmn || mfcc->para->cvn)) {
-	jlog(" MAP-");
-	if (mfcc->para->cmn) jlog("CMN");
-	if (mfcc->para->cmn && mfcc->para->cvn) jlog("+");
-	if (mfcc->para->cvn) jlog("CVN");
-	jlog(":\n");
-	jlog("      initial cep. data   = ");
-	if (mfcc->cmn.load_filename) {
-	  jlog("load from \"%s\"\n", mfcc->cmn.load_filename);
-	} else {
-	  jlog("none\n");
-	}
-	jlog("      beginning data weight = %6.2f\n", mfcc->cmn.map_weight);
-	if (mfcc->cmn.update) {
-	  jlog("    beginning data update = yes, from last inputs at each input\n");
-	} else {
-	  jlog("    beginning data update = no, use default as initial at each input\n");
-	}
-	if (mfcc->cmn.save_filename) {
-	  jlog("        save cep. data to = file \"%s\" at end of each input\n", mfcc->cmn.save_filename);
-	}
-	jlog("\n");
-      }
     }
   }
 
@@ -434,6 +452,24 @@ print_engine_info(Recog *recog)
       if (lm->config->enable_iwspword) {
 	jlog("\tIW-sp word added to dict= \"%s\"\n", lm->config->iwspentry);
       }
+      if (lm->config->additional_dict_files) {
+	JCONF_LM_NAMELIST *nl;
+	jlog("\tadditional dictionaries:\n");
+	for(nl=lm->config->additional_dict_files;nl;nl=nl->next) {
+	  jlog("\t\t\t%s\n", nl->name);
+	}
+	jlog("\n");
+      }
+      if (lm->config->additional_dict_entries) {
+	JCONF_LM_NAMELIST *nl;
+	int n = 0;
+	jlog("\tadditional dict entries:\n");
+	for(nl=lm->config->additional_dict_entries;nl;nl=nl->next) {
+	  jlog("\t\t\t%s\n", nl->name);
+	  n++;
+	}
+	jlog("--- total %d entries\n", n);
+      }
     }
 
     if (lm->lmtype == LM_PROB) {    
@@ -557,6 +593,13 @@ print_engine_info(Recog *recog)
     } else {
       jlog("\n");
     }
+#ifdef SCORE_PRUNING
+    if (r->config->pass1.score_pruning_width < 0.0) {
+      jlog("\t(-bs)score pruning thres= disabled\n");
+    } else {
+      jlog("\t(-bs)score pruning thres= %f\n", r->config->pass1.score_pruning_width);
+    }
+#endif
     jlog("\t(-n)search candidate num= %d\n", r->config->pass2.nbest);
     jlog("\t(-s)  search stack size = %d\n", r->config->pass2.stack_size);
     jlog("\t(-m)    search overflow = after %d hypothesis poped\n", r->config->pass2.hypo_overflow);
@@ -715,7 +758,15 @@ print_engine_info(Recog *recog)
     } else {
       jlog("off, returns search failure\n");
     }
-
+#ifdef USE_MBR
+    if (r->config->mbr.use_mbr) {
+      jlog("\n");
+      jlog("Minimum Bayes Risk Decoding:\n");
+      jlog("\t(-mbr)        sentence rescoring on MBR = %s\n", r->config->mbr.use_mbr ? "yes" : "no");
+      jlog("\t(-mbr_wwer)   use word weight on MBR = %s\n", r->config->mbr.use_word_weight ? "yes" : "no");
+      jlog("\t(-mbr_weight) score weight = %2.1f  loss func. weight  = %2.1f\n", r->config->mbr.score_weight, r->config->mbr.loss_weight);
+    }
+#endif
     jlog("\n");
   }
 
@@ -787,6 +838,16 @@ print_engine_info(Recog *recog)
     } else {
       jlog("%s\n", jconf->input.inputlist_filename);
     }
+  } else if (jconf->input.speech_input == SP_OUTPROBFILE) {
+    jlog("output probability vector file (HTK format)\n");
+    jlog("\t                filelist = ");
+    if (jconf->input.inputlist_filename == NULL) {
+      jlog("(none, get file name from stdin)\n");
+    } else {
+      jlog("%s\n", jconf->input.inputlist_filename);
+    }
+  } else if (jconf->input.speech_input == SP_MFCMODULE) {
+    jlog("vector input module (feature or outprob)\n");
   } else if (jconf->input.speech_input == SP_STDIN) {
     jlog("standard input\n");
   } else if (jconf->input.speech_input == SP_ADINNET) {
@@ -811,6 +872,7 @@ print_engine_info(Recog *recog)
     case SP_INPUT_ALSA: jlog("alsa\n"); break;
     case SP_INPUT_OSS: jlog("oss\n"); break;
     case SP_INPUT_ESD: jlog("esd\n"); break;
+    case SP_INPUT_PULSEAUDIO: jlog("pulseaudio\n"); break;
     }
   }
   if (jconf->input.type == INPUT_WAVEFORM) {
@@ -840,10 +902,14 @@ print_engine_info(Recog *recog)
     jlog("not supported (live input may be dropped)\n");
 #endif
   }
-  if (jconf->preprocess.strip_zero_sample) {
-    jlog("\t   zero frames stripping = on\n");
+  if (jconf->input.speech_input == SP_OUTPROBFILE) {
+    jlog("\t   zero frames stripping = disabled for outprob input\n");
   } else {
-    jlog("\t   zero frames stripping = off\n");
+    if (jconf->preprocess.strip_zero_sample) {
+      jlog("\t   zero frames stripping = on\n");
+    } else {
+      jlog("\t   zero frames stripping = off\n");
+    }
   }
   if (jconf->input.type == INPUT_WAVEFORM) {
     if (recog->adin->adin_cut_on) {
@@ -852,6 +918,7 @@ print_engine_info(Recog *recog)
       jlog("\t         zerocross thres = %d / sec.\n", jconf->detect.zero_cross_num);
       jlog("\t             head margin = %d msec.\n", jconf->detect.head_margin_msec);
       jlog("\t             tail margin = %d msec.\n", jconf->detect.tail_margin_msec);
+      jlog("\t              chunk size = %d samples\n", jconf->detect.chunk_size);
     } else {
       jlog("\t         silence cutting = off\n");
     }
@@ -866,10 +933,22 @@ print_engine_info(Recog *recog)
     } else {
       jlog("\t    long-term DC removal = off\n");
     }
+    jlog("\t    long-term DC removal = off\n");
+    if (jconf->preprocess.level_coef != 1.0) {
+      jlog("\t    level scaling factor = %.2f\n", jconf->preprocess.level_coef);
+    } else {
+      jlog("\t    level scaling factor = %.2f (disabled)\n", jconf->preprocess.level_coef);
+    }
   }
   jlog("\t      reject short input = ");
   if (jconf->reject.rejectshortlen > 0) {
     jlog("< %d msec\n", jconf->reject.rejectshortlen);
+  } else {
+    jlog("off\n");
+  }
+  jlog("\t      reject  long input = ");
+  if (jconf->reject.rejectlonglen >= 0) {
+    jlog("longer than %d msec\n", jconf->reject.rejectlonglen);
   } else {
     jlog("off\n");
   }
@@ -880,71 +959,104 @@ print_engine_info(Recog *recog)
   jlog("\n");
 
   jlog("----------------------- System Information end -----------------------\n");
+  jlog("\n");
 
-#ifdef USE_MIC
-  if (jconf->decodeopt.realtime_flag) {
-    boolean flag;
-    flag = FALSE;
+  if (jconf->input.type == INPUT_WAVEFORM) {
+
+   if (jconf->decodeopt.realtime_flag) {
+
+    /* warning for real-time decoding */
     for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-      if (mfcc->para->cmn && mfcc->cmn.loaded) {
-	flag = TRUE;
-	break;
-      }
-    }
-    if (flag) {
-      jlog("\n");
-      jlog("initial CMN parameter loaded from file\nfor");
-      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-	if (mfcc->para->cmn && mfcc->cmn.loaded) {
-	  jlog(" MFCC%02d", mfcc->id);
+      if (mfcc->para->cmn || mfcc->para->cvn) {
+	jlog("Notice for feature extraction (%02d),\n", mfcc->id);
+	jlog("\t*************************************************************\n");
+	if (mfcc->para->cmn && mfcc->para->cvn) {
+	  jlog("\t* Cepstral mean and variance norm. for real-time decoding:  *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* initial mean loaded from file, updating per utterance.    *\n");
+	    jlog("\t* static variance loaded from file, apply it constantly.    *\n");
+	    jlog("\t* NOTICE: The first input may not be recognized, since      *\n");
+	    jlog("\t*         cepstral mean is unstable on startup.             *\n");
+	  } else {
+	    jlog("\t* no static variance was given by file.                     *\n");
+	    jlog("\t* estimating long-term variance from all speech from start. *\n");
+	    jlog("\t* NOTICE: May not work on the first several minutes, since  *\n");
+	    jlog("\t*         no cepstral variance is given on startup.         *\n");
+	  }
+	} else if (mfcc->para->cmn) {
+	  jlog("\t* Cepstral mean normalization for real-time decoding:       *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* initial mean loaded from file, updating per utterance.    *\n");
+	    jlog("\t* NOTICE: The first input may not good, since               *\n");
+	    jlog("\t*         cepstral mean is unstable on startup.             *\n");
+	  } else {
+	    jlog("\t* NOTICE: The first input may not be recognized, since      *\n");
+	    jlog("\t*         no initial mean is available on startup.          *\n");
+	  }
+	} else if (mfcc->para->cvn) {
+	  jlog("\t* Cepstral variance normalization for real-time decoding:   *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* static variance loaded from file, apply it constantly.    *\n");
+	  } else {
+	    jlog("\t* no static variance is given by file.                      *\n");
+	    jlog("\t* estimating long-term variance from all speech from start. *\n");
+	    jlog("\t* NOTICE: The first minutes may not work well, since        *\n");
+	    jlog("\t*         no cepstral variance is given on startup.         *\n");
+	  }
 	}
+	jlog("\t*************************************************************\n");
       }
-      jlog("\n");
-    }
-    flag = FALSE;
-    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-      if (mfcc->para->cmn && !mfcc->cmn.loaded) {
-	flag = TRUE;
-	break;
-      }
-    }
-    if (flag) {
-      jlog("\n");
-      jlog("\t*************************************************************\n");
-      jlog("\t* NOTICE: The first input may not be recognized, since      *\n");
-      jlog("\t*         no initial CMN parameter is available on startup. *\n");
-      jlog("\t* for");
-      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-	if (mfcc->para->cmn && !mfcc->cmn.loaded) {
-	  jlog(" MFCC%02d", mfcc->id);
-	}
-      }
-      jlog("*\n");
-      jlog("\t*************************************************************\n");
-    }
-    flag = FALSE;
-    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
       if (mfcc->para->energy && mfcc->para->enormal) {
-	flag = TRUE;
-	break;
+	jlog("Notice for energy computation (%02d),\n", mfcc->id);
+	jlog("\t*************************************************************\n");
+	jlog("\t* NOTICE: Energy normalization is activated on live input:  *\n");
+	jlog("\t*         maximum energy of LAST INPUT will be used for it. *\n");
+	jlog("\t*         So, the first input will not be recognized.       *\n");
+	jlog("\t*************************************************************\n");
       }
     }
-    if (flag) {
-      jlog("\t*************************************************************\n");
-      jlog("\t* NOTICE: Energy normalization is activated on live input:  *\n");
-      jlog("\t*         maximum energy of LAST INPUT will be used for it. *\n");
-      jlog("\t*         So, the first input will not be recognized.       *\n");
-      jlog("\t* for");
-      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-	if (mfcc->para->energy && mfcc->para->enormal) {
-	  jlog(" MFCC%02d", mfcc->id);
+
+   } else {
+
+    /* warning for batch decoding */
+    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+      if (mfcc->para->cmn || mfcc->para->cvn) {
+	jlog("Notice for feature extraction (%02d),\n", mfcc->id);
+	jlog("\t*************************************************************\n");
+	if (mfcc->para->cmn && mfcc->para->cvn) {
+	  jlog("\t* Cepstral mean and variance norm. for batch decoding:      *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* constant mean and variance was loaded from file.          *\n");
+	    jlog("\t* they will be applied constantly for all input.            *\n");
+	  } else {
+	    jlog("\t* per-utterance mean and variance will be computed and      *\n");
+	    jlog("\t* applied for each input.                                   *\n");
+	  }
+	} else if (mfcc->para->cmn) {
+	  jlog("\t* Cepstral mean normalization for batch decoding:           *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* constant mean was loaded from file.                       *\n");
+	    jlog("\t* they will be constantly applied for all input.            *\n");
+	  } else {
+	    jlog("\t* per-utterance mean will be computed and applied.          *\n");
+	  }
+	} else if (mfcc->para->cvn) {
+	  jlog("\t* Cepstral variance normalization for batch decoding:       *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* constant variance was loaded from file.                   *\n");
+	    jlog("\t* they will be constantly applied for all input.            *\n");
+	  } else {
+	    jlog("\t* per-utterance variance will be computed and applied.      *\n");
+	  }
 	}
+	jlog("\t*************************************************************\n");
       }
-      jlog("*\n");
-      jlog("\t*************************************************************\n");
     }
+
+   }
+
   }
-#endif
+
 }
 
 /* end of file */

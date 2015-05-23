@@ -1,6 +1,6 @@
-dnl Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+dnl Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
 dnl Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
-dnl Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+dnl Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
 dnl All rights reserved
 
 AC_INIT(00readme.txt)
@@ -57,7 +57,6 @@ dnl AC_PATH_PROG(FLEX, flex)
 dnl if test -z "$FLEX"; then
 dnl 	AC_MSG_ERROR([flex not found! installation terminated])
 dnl fi
-AC_CHECK_LIB(fl, yywrap,,AC_MSG_ERROR([flex library not found! installation terminated]))
 AC_PATH_PROG(ICONV,iconv)
 if test -z "$ICONV"; then
 	AC_MSG_WARN([no iconv, gram2sapixml.pl may not work])

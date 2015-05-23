@@ -12,13 +12,13 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.16 $
+ * $Revision: 1.24 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -171,6 +171,7 @@ boolean opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf);
 void opt_release(Jconf *jconf);
 /* m_jconf.c */
 void get_dirname(char *path);
+boolean config_string_parse(char *str, Jconf *jconf);
 boolean config_file_parse(char *conffile, Jconf *jconf);
 /* m_chkparam.c */
 boolean checkpath(char *filename);
@@ -178,6 +179,7 @@ boolean j_jconf_finalize(Jconf *jconf);
 int set_beam_width(WCHMM_INFO *wchmm, int specified);
 /* m_info.c */
 void print_jconf_overview(Jconf *jconf);
+void print_mfcc_info(FILE *fp, MFCCCalc *mfcc, Jconf *jconf);
 void print_engine_info(Recog *recog);
 /* m_bootup.c */
 void system_bootup(Recog *recog);
@@ -190,6 +192,7 @@ boolean j_load_all(Recog *recog, Jconf *jconf);
 boolean j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf);
 boolean j_final_fusion(Recog *recog);
 void create_mfcc_calc_instances(Recog *recog);
+boolean j_reload_adddict(Recog *recog, PROCESS_LM *lm);
 
 /* hmm_check.c */
 void hmm_check(RecogProcess *r);
@@ -325,7 +328,10 @@ boolean mfc_module_begin(MFCCCalc *mfcc);
 boolean mfc_module_end(MFCCCalc *mfcc);
 int mfc_module_read(MFCCCalc *mfcc, int *new_t);
 char *mfc_module_input_name(MFCCCalc *mfcc);
-
+#ifdef USE_MBR
+/* mbr.c */
+void candidate_mbr(NODE **r_start, NODE **r_bottom, int r_stacknum, RecogProcess *r);
+#endif
 #ifdef __cplusplus
 }
 #endif

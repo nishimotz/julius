@@ -20,7 +20,6 @@ DESCRIPTION
 
        各ファイル形式の詳細については，別途ドキュメントをご覧下さい．
 
-
        prefix は，.grammar ファイルおよび .vocaファイルの プレフィックスを引数
        として与えます．prefix.grammarと prefix.vocaからprefix.dfa，
        prefix.dictおよび prefix.termが生成されます．
@@ -30,18 +29,18 @@ DESCRIPTION
 
 OPTIONS
         -n
-          辞書を出力しない．.voca 無しで .grammar のみを .dfa に変換する こと
-          ができる．
+           辞書を出力しない．.voca 無しで .grammar のみを .dfa に変換する こと
+           ができる．
 
 ENVIRONMENT VARIABLES
         TMP または TEMP
-          変換中に一時ファイルを置くディレクトリを指定する． 指定が無い場合，
-          /tmp, /var/tmp, /WINDOWS/Temp, /WINNT/Temp の順で最初に見つかった場
-          所が使用される．
+           変換中に一時ファイルを置くディレクトリを指定する． 指定が無い場合，
+           /tmp, /var/tmp, /WINDOWS/Temp, /WINNT/Temp の順で最初に見つかった場
+           所が使用される．
 
 EXAMPLES
-       文法ファイル foo.grammar, foo.vocaに 対して以下を実行することで foo.dfa
-       と foo.vocaおよびfoo.termが出力される．
+       文法ファイル foo.grammar, foo.vocaに 対して以下を実行することで
+       foo.dfaと foo.vocaおよびfoo.termが出力される．
 
 SEE ALSO
         julius ( 1 ) ,
@@ -56,17 +55,17 @@ DIAGNOSTICS
        あります． これらはJulius に同梱されています．
 
 COPYRIGHT
-       Copyright (c) 1991-2008 京都大学 河原研究室
+       Copyright (c) 1991-2013 京都大学 河原研究室
 
        Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
 
-       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+       Copyright (c) 2000-2005 奈良先端科学技術大学院大学 鹿野研究室
 
-       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
+       Copyright (c) 2005-2013 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-                                  10/02/2008                       MKDFA.PL(1)
+                                  19/12/2013                       MKDFA.PL(1)

@@ -30,24 +30,28 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 00:17:18 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.9 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 #include <sent/stddefs.h>
 #include <sent/htk_param.h>
 #include <sent/htk_hmm.h>
+#ifdef HAVE_ZLIB
+#include <zlib.h>
+#endif
 
 #define MAXBUFLEN  4096		///< Maximum length of a line in the input
 
 char *rdhmmdef_token;		///< Current token string (GLOBAL)
-static char *buf = NULL;	///< Local work area for token reading
+static boolean last_line_full = FALSE;
+static char buf[MAXBUFLEN];	///< Local work area for token reading
 static int line;		///< Input Line count
 
 /* global functions for rdhmmdef_*.c */
@@ -79,24 +83,52 @@ rderr(char *str)
 char *
 read_token(FILE *fp)
 {
-  if (buf != NULL) {
-    /* already have buffer */
-    if ((rdhmmdef_token = mystrtok_quote(NULL, HMMDEF_DELM)) != NULL) {
-      /* return next token */
+  int len;
+  int bp = 0;
+  int maxlen = MAXBUFLEN;
+  static char delims[] = HMMDEF_DELM;
+
+  if ((rdhmmdef_token = mystrtok_quote(NULL, HMMDEF_DELM)) != NULL) {
+    /* has token */
+    if (mystrtok_movetonext(NULL, HMMDEF_DELM) != NULL || last_line_full == FALSE) {
+      /* return the current token, if this is not a last token, or
+	 last is newline terminated */
+      return rdhmmdef_token;
+    } else {
+      /* concatinate the last token with next line */
+      len = strlen(rdhmmdef_token);
+      memmove(buf, rdhmmdef_token, len);
+      bp = len;
+      maxlen -= len;
+    }
+  }
+
+  /* read new 1 line a*/
+  while(
+#ifdef HAVE_ZLIB
+	gzgets((gzFile)fp, &(buf[bp]), maxlen) != Z_NULL
+#else
+	fgets(&(buf[bp]), maxlen, fp) != NULL
+#endif
+	) {
+    /* chop delimiters at end of line (incl. newline) */
+    /* if no delimiter at end of line, last_line_full is TRUE */
+    last_line_full = TRUE;
+    len = strlen(buf)-1;
+    while (len >= 0 && strchr(delims, buf[len])) {
+      last_line_full = FALSE;
+      buf[len--] = '\0';
+    }
+    if (buf[0] != '\0') {
+      /* start getting next token */
+      rdhmmdef_token = mystrtok_quote(buf, HMMDEF_DELM);
+      /* increment line */
+      line++;
       return rdhmmdef_token;
     }
-  } else {
-    /* init: allocate buffer for the first time */
-    buf = (char *)mymalloc(MAXBUFLEN);
-    line = 1;
   }
-  /* read new 1 line */
-  if (getl(buf, MAXBUFLEN, fp) == NULL) {
-    rdhmmdef_token = NULL;
-  } else {
-    rdhmmdef_token = mystrtok_quote(buf, HMMDEF_DELM);
-    line++;
-  }
+  /* when reading error, return NULL */
+  rdhmmdef_token = NULL;
   return rdhmmdef_token;
 }
 
@@ -169,6 +201,52 @@ htk_hmm_check_msd(HTK_HMM_INFO *hmm)
 }
 #endif
 
+boolean
+htk_hmm_check_sid(HTK_HMM_INFO *hmm)
+{
+  HTK_HMM_State *stmp;
+  boolean *check;
+  int i;
+  boolean ok_p;
+  
+  /* check if each state is assigned a valid sid */
+  check = (boolean *)mymalloc(sizeof(boolean) * hmm->totalstatenum);
+  for(i = 0; i < hmm->totalstatenum; i++) check[i] = FALSE;
+  for (stmp = hmm->ststart; stmp; stmp = stmp->next) {
+    if (stmp->id == -1) {
+      jlog("Error: rdhmmdef: no SID on some states\n");
+      free(check);
+      return FALSE;
+    }
+    if (stmp->id < 0) {
+      jlog("Error: rdhmmdef: invalid SID value: %d\n", stmp->id);
+      free(check);
+      return FALSE;
+    }
+    if (stmp->id >= hmm->totalstatenum) {
+      jlog("Error: rdhmmdef: SID value exceeds the number of states? (%d > %d)\n", stmp->id, hmm->totalstatenum);
+      free(check);
+      return FALSE;
+    }
+    if (check[stmp->id] == TRUE) {
+      jlog("Error: rdhmmdef: duplicate definition to the same SID: %d\n", stmp->id);
+      free(check);
+      return FALSE;
+    }
+    check[stmp->id] = TRUE;
+  }
+  ok_p = TRUE;
+  for(i = 0; i < hmm->totalstatenum; i++) {
+    if (check[i] == FALSE) {
+      jlog("Error: rdhmmdef: missing SID: %d\n", i);
+      ok_p = FALSE;
+    }
+  }
+  free(check);
+
+  return ok_p;
+}
+
 /** 
  * @brief  Main top routine to read in HTK %HMM definition file.
  *
@@ -190,7 +268,13 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
   hmm->variance_inversed = FALSE;
 
   /* read the first token */
-  read_token(fp);
+  /* read new 1 line */
+  line = 1;
+  if (getl(buf, MAXBUFLEN, fp) == NULL) {
+    rdhmmdef_token = NULL;
+  } else {
+    rdhmmdef_token = mystrtok_quote(buf, HMMDEF_DELM);
+  }
   
   /* the toplevel loop */
   while (rdhmmdef_token != NULL) {/* break on EOF */
@@ -289,25 +373,54 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
     return FALSE;
   }
 
-  /* add ID number for all HTK_HMM_State */
-  /* also calculate the maximum number of mixture */
+  /* add ID number for all HTK_HMM_State if not assigned */
   {
     HTK_HMM_State *stmp;
-    int n, max, s, mix;
+    int n;
+    boolean has_sid;
+
+    /* caclculate total num and check if has sid */
+    has_sid = FALSE;
     n = 0;
+    for (stmp = hmm->ststart; stmp; stmp = stmp->next) {
+      n++;
+      if (n >= MAX_STATE_NUM) {
+	jlog("Error: rdhmmdef: too much states in a model > %d\n", MAX_STATE_NUM);
+	return FALSE;
+      }
+      if (stmp->id != -1) {
+	has_sid = TRUE;
+      }
+    }
+    hmm->totalstatenum = n;
+    if (has_sid) {
+      jlog("Stat: rdhmmdef: <SID> found in the definition\n");
+      /* check if each state is assigned a valid sid */
+      if (htk_hmm_check_sid(hmm) == FALSE) {
+	jlog("Error: rdhmmdef: error in SID\n");
+	return FALSE;
+      }
+    } else {
+      /* assign internal sid (will not be saved) */
+      jlog("Stat: rdhmmdef: no <SID> embedded\n");
+      jlog("Stat: rdhmmdef: assign SID by the order of appearance\n");
+      n = hmm->totalstatenum;
+      for (stmp = hmm->ststart; stmp; stmp = stmp->next) {
+	stmp->id = --n;
+      }
+    }
+  }
+  /* calculate the maximum number of mixture */
+  {
+    HTK_HMM_State *stmp;
+    int max, s, mix;
     max = 0;
     for (stmp = hmm->ststart; stmp; stmp = stmp->next) {
       for(s=0;s<stmp->nstream;s++) {
 	mix = stmp->pdf[s]->mix_num;
 	if (max < mix) max = mix;
       }
-      stmp->id = n++;
-      if (n >= MAX_STATE_NUM) {
-	jlog("Error: rdhmmdef: too much states in a model > %d\n", MAX_STATE_NUM);
-	return FALSE;
-      }
     }
-    hmm->totalstatenum = n;
     hmm->maxmixturenum = max;
   }
   /* compute total number of HMM models and maximum length */
@@ -349,6 +462,15 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
       n++;
     }
     hmm->totalpdfnum = n;
+  }
+  /* assign ID number for all HTK_HMM_Trans */
+  {
+    HTK_HMM_Trans *ttmp;
+    int n = 0;
+    for (ttmp = hmm->trstart; ttmp; ttmp = ttmp->next) {
+      ttmp->id = n++;
+    }
+    hmm->totaltransnum = n;
   }
 #ifdef ENABLE_MSD
   /* check if MSD-HMM */

@@ -33,20 +33,19 @@ DESCRIPTION
        already has acoustic analysis parameters embedded, they will be
        overridden by the specified values.
 
-
        mkbinhmm can read gzipped file as input.
 
 OPTIONS
         -htkconf  HTKConfigFile
-          HTK Config file you used at training time. If specified, the values
-          are embedded to the output file.
+           HTK Config file you used at training time. If specified, the values
+           are embedded to the output file.
 
        hmmdefs_file
-          The source HMm definitino file in HTK ascii format or Julius binary
-          format.
+           The source HMm definitino file in HTK ascii format or Julius binary
+           format.
 
        hmmdefs_file
-          Output file.
+           Output file.
 
 EXAMPLES
        Convert HTK ascii format HMM definition file into Julius binary file:
@@ -60,14 +59,14 @@ SEE ALSO
         mkbinhmmlist ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
+       Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
 
-       Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 
        Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and
        Technology
 
-       Copyright (c) 2005-2008 Julius project team, Nagoya Institute of
+       Copyright (c) 2005-2013 Julius project team, Nagoya Institute of
        Technology
 
 LICENSE
@@ -75,4 +74,4 @@ LICENSE
 
 
 
-                                  10/02/2008                       MKBINHMM(1)
+                                  12/19/2013                       MKBINHMM(1)

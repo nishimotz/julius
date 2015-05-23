@@ -12,13 +12,13 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:48:56 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.9 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -37,10 +37,12 @@ ngram_info_new()
 
   new = (NGRAM_INFO *)mymalloc(sizeof(NGRAM_INFO));
   new->n = 0;
+  new->wname = NULL;
   new->d = NULL;
   new->bo_wt_1 = NULL;
   new->p_2 = NULL;
   new->bos_eos_swap = FALSE;
+  new->mroot = NULL;
 
   return(new);
 }
@@ -70,17 +72,22 @@ void
 ngram_info_free(NGRAM_INFO *ndata)
 {
   int i;
+  WORD_ID w;
+
   /* bin test only */
   /* free word names */
   if (ndata->from_bin) {
-    free(ndata->wname[0]);
-    free(ndata->wname);
-  } else {
-    WORD_ID w;
-    for(w=0;w<ndata->max_word_num;w++) {
-      free(ndata->wname[w]);
+    if (ndata->wname) {
+      if (ndata->wname[0]) free(ndata->wname[0]);
+      free(ndata->wname);
     }
-    free(ndata->wname);
+  } else {
+    if (ndata->wname) {
+      for(w=0;w<ndata->max_word_num;w++) {
+	if (ndata->wname[w]) free(ndata->wname[w]);
+      }
+      free(ndata->wname);
+    }
   }
   /* free 2-gram for the 1st pass */
   if (ndata->bo_wt_1) free(ndata->bo_wt_1);
@@ -93,7 +100,7 @@ ngram_info_free(NGRAM_INFO *ndata)
     free(ndata->d);
   }
   /* free name index tree */
-  free_ptree(ndata->root);
+  if (ndata->mroot) mybfree2(&(ndata->mroot));
   /* free whole */
   free(ndata);
 }

@@ -46,13 +46,13 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 18:45:21 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.7 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -186,6 +186,7 @@ outprob_state(HMMWork *wrk, int t, HTK_HMM_State *stateinfo, HTK_Param *param)
   LOGPROB outp;
   int sid;
   int i, d;
+  HTK_HMM_State *s;
 
   sid = stateinfo->id;
   
@@ -203,6 +204,29 @@ outprob_state(HMMWork *wrk, int t, HTK_HMM_State *stateinfo, HTK_Param *param)
 
     outprob_cache_extend(wrk, t);	/* extend cache if needed */
     wrk->last_cache = wrk->outprob_cache[t]; /* reduce 2-d array access */
+  }
+
+  if (param->is_outprob) {
+    /* return the param as output probability */
+    if (sid >= param->veclen) {
+      jlog("Error: state id in the dummy HMM exceeds vector length (%d > %d)\n", sid, param->veclen);
+      return(LOG_ZERO);
+    }
+    return(param->parvec[t][sid]);
+  }
+
+  if (wrk->batch_computation) {
+    /* batch computation: if the frame is not computed yet, pre-compute all */
+    s = wrk->OP_hmminfo->ststart;
+    if (wrk->last_cache[s->id] == LOG_UNDEF) {
+      for (; s; s = s->next) {
+	wrk->OP_state = s;
+	wrk->OP_state_id = s->id;
+	wrk->last_cache[s->id] = (*(wrk->calc_outprob_state))(wrk);
+      }
+    }
+    wrk->OP_state = stateinfo;
+    wrk->OP_state_id = sid;
   }
   
   /* consult cache */
@@ -382,4 +406,68 @@ outprob(HMMWork *wrk, int t, HMM_STATE *hmmstate, HTK_Param *param)
   } else {
     return(outprob_state(wrk, t, hmmstate->out.state, param));
   }
+}
+
+
+
+
+static boolean
+mywrite(char *buf, size_t unitbyte, int unitnum, FILE *fp, boolean needswap)
+{
+  size_t tmp;
+
+  int i;
+  if (needswap) swap_bytes(buf, unitbyte, unitnum);
+  if ((tmp = myfwrite(buf, unitbyte, unitnum, fp)) < (size_t)unitnum) {
+    jlog("Error: outprob_cache_output: failed to write %d bytes\n", unitbyte * unitnum);
+    return(FALSE);
+  }
+  //  if (needswap) swap_bytes(buf, unitbyte, unitnum);
+  return(TRUE);
+}
+
+boolean
+outprob_cache_output(FILE *fp, HMMWork *wrk, int framenum)
+{
+  int s,t;
+  boolean needswap;
+
+#ifdef WORDS_BIGENDIAN
+  needswap = FALSE;
+#else  /* LITTLE ENDIAN */
+  needswap = TRUE;
+#endif
+
+  needswap = TRUE;
+
+  if (wrk->outprob_allocframenum < framenum) {
+    jlog("Error: outprob_cache_output: framenum > allocated (%d > %d)\n", framenum, wrk->outprob_allocframenum);
+    return FALSE;
+  }
+
+  {
+    unsigned int ui;
+    unsigned short us;
+    short st;
+    float f;
+
+    jlog("Stat: outprob_cache_output: %d states, %d samples\n", wrk->statenum, framenum);
+
+    ui = framenum;
+    if (!mywrite((char *)&ui, sizeof(unsigned int), 1, fp, needswap)) return FALSE;
+    ui = wrk->OP_param->header.wshift;
+    if (!mywrite((char *)&ui, sizeof(unsigned int), 1, fp, needswap)) return FALSE;
+    us = wrk->statenum * sizeof(float);
+    if (!mywrite((char *)&us, sizeof(unsigned short), 1, fp, needswap)) return FALSE;
+    st = F_USER;
+    if (!mywrite((char *)&st, sizeof(short), 1, fp, needswap)) return FALSE;
+
+    for (t = 0; t < framenum; t++) {
+      for (s = 0; s < wrk->statenum; s++) {
+	f = wrk->outprob_cache[t][s];
+	if (!mywrite((char *)&f, sizeof(float), 1, fp, needswap)) return FALSE;
+      }
+    }
+  }
+  
 }

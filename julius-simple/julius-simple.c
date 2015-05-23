@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Tue Dec 11 14:40:04 2007
  * 
- * $Revision: 1.3 $
+ * $Revision: 1.5 $
  * 
  */
 
@@ -123,6 +123,9 @@ output_result(Recog *recog, void *dummy)
 	break;
       case J_RESULT_STATUS_REJECT_SHORT:
 	printf("<input rejected by short input>\n");
+	break;
+      case J_RESULT_STATUS_REJECT_LONG:
+	printf("<input rejected by long input>\n");
 	break;
       case J_RESULT_STATUS_FAIL:
 	printf("<search failed>\n");
@@ -322,7 +325,7 @@ main(int argc, char *argv[])
   /* Open input stream and recognize */
   /***********************************/
 
-  if (jconf->input.speech_input == SP_MFCFILE) {
+  if (jconf->input.speech_input == SP_MFCFILE || jconf->input.speech_input == SP_OUTPROBFILE) {
     /* MFCC file input */
 
     while (get_line_from_stdin(speechfilename, MAXPATHLEN, "enter MFCC filename->") != NULL) {

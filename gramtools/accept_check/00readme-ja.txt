@@ -31,30 +31,30 @@ DESCRIPTION
 
 OPTIONS
         -t
-          単語ではなくカテゴリ名で入力・出力する．
+           単語ではなくカテゴリ名で入力・出力する．
 
         -s  spname
-          スキップすべきショートポーズ単語の名前を指定する． (default: "sp")
+           スキップすべきショートポーズ単語の名前を指定する． (default: "sp")
 
         -v
-          デバッグ出力．
+           デバッグ出力．
 
 EXAMPLES
        vfr (フィッティングタスク用文法) での実行例：
 
-          % accept_check vfr
-          Reading in dictionary...done
-          Reading in DFA grammar...done
-          Mapping dict item <-> DFA terminal (category)...done
-          Reading in term file (optional)...done
-          42 categories, 99 words
-          DFA has 135 nodes and 198 arcs
-          -----
-          please input word sequence>silB 白 に して 下さい silE
-          wseq: silB 白 に して 下さい silE
-          cate: NS_B COLOR_N (NI|NI_AT) SURU_V KUDASAI_V NS_E
-          accepted
-          please input word sequence>
+           % accept_check vfr
+           Reading in dictionary...done
+           Reading in DFA grammar...done
+           Mapping dict item <-> DFA terminal (category)...done
+           Reading in term file (optional)...done
+           42 categories, 99 words
+           DFA has 135 nodes and 198 arcs
+           -----
+           please input word sequence>silB 白 に して 下さい silE
+           wseq: silB 白 に して 下さい silE
+           cate: NS_B COLOR_N (NI|NI_AT) SURU_V KUDASAI_V NS_E
+           accepted
+           please input word sequence>
 
 
 SEE ALSO
@@ -63,17 +63,17 @@ SEE ALSO
         nextword ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1991-2008 京都大学 河原研究室
+       Copyright (c) 1991-2013 京都大学 河原研究室
 
        Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
 
-       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+       Copyright (c) 2000-2005 奈良先端科学技術大学院大学 鹿野研究室
 
-       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
+       Copyright (c) 2005-2013 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-                                  10/02/2008                   ACCEPT_CHECK(1)
+                                  19/12/2013                   ACCEPT_CHECK(1)

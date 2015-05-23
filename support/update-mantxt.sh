@@ -23,6 +23,9 @@ echo 'Did you placed all the new manuals in "man" and "man/ja/" ?'
 ./support/makeman.sh jcontrol jcontrol
 ./support/makeman.sh julius julius
 ./support/makeman.sh mkbingram mkbingram
+./support/makeman.sh mkbinhmmlist mkbinhmm
+mv mkbinhmm/00readme.txt mkbinhmm/00readme-mkbinhmmlist.txt
+mv mkbinhmm/00readme-ja.txt mkbinhmm/00readme-mkbinhmmlist-ja.txt
 ./support/makeman.sh mkbinhmm mkbinhmm
 ./support/makeman.sh mkdfa.pl gramtools/mkdfa
 ./support/makeman.sh mkgshmm mkgshmm

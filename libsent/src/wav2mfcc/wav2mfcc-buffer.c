@@ -24,7 +24,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 17:43:35 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.7 $
  * 
  */
 
@@ -54,7 +54,7 @@
  * @return the number of processed frames.
  */
 int
-Wav2MFCC(SP16 *wave, float **mfcc, Value *para, int nSamples, MFCCWork *w)
+Wav2MFCC(SP16 *wave, float **mfcc, Value *para, int nSamples, MFCCWork *w, CMNWork *c)
 {
   int i, k, t;
   int end = 0, start = 1;
@@ -94,8 +94,8 @@ Wav2MFCC(SP16 *wave, float **mfcc, Value *para, int nSamples, MFCCWork *w)
   if (para->acc) Accel(mfcc, frame_num, para);
 
   /* Cepstrum Mean and/or Variance Normalization */
-  if (para->cmn && ! para->cvn) CMN(mfcc, frame_num, para->mfcc_dim);
-  else if (para->cmn || para->cvn) MVN(mfcc, frame_num, para);
+  if (para->cmn && ! para->cvn) CMN(mfcc, frame_num, para->mfcc_dim + (para->c0 ? 1 : 0), c);
+  else if (para->cmn || para->cvn) MVN(mfcc, frame_num, para, c);
 
   return(frame_num);
 }
@@ -216,26 +216,34 @@ void Accel(float **c, int frame, Value *para)
  * @param frame_num [in] number of frames
  * @param dim [in] total dimension of MFCC vectors
  */
-void CMN(float **mfcc, int frame_num, int dim)
+void CMN(float **mfcc, int frame_num, int dim, CMNWork *c)
 {
   int i, t;
   float *mfcc_ave, *sum;
 
-  mfcc_ave = (float *)mycalloc(dim, sizeof(float));
-  sum = (float *)mycalloc(dim, sizeof(float));
-
-  for(i = 0; i < dim; i++){
-    sum[i] = 0.0;
-    for(t = 0; t < frame_num; t++)
-      sum[i] += mfcc[t][i];
-    mfcc_ave[i] = sum[i] / frame_num;
+  if (c != NULL && c->cmean_init_set) {
+    /* has initial param, use it permanently */
+    for(t = 0; t < frame_num; t++){
+      for(i = 0; i < dim; i++)
+	mfcc[t][i] -= c->cmean_init[i];
+    }
+  } else {
+    /* compute from current input */
+    mfcc_ave = (float *)mycalloc(dim, sizeof(float));
+    sum = (float *)mycalloc(dim, sizeof(float));
+    for(i = 0; i < dim; i++){
+      sum[i] = 0.0;
+      for(t = 0; t < frame_num; t++)
+	sum[i] += mfcc[t][i];
+      mfcc_ave[i] = sum[i] / frame_num;
+    }
+    for(t = 0; t < frame_num; t++){
+      for(i = 0; i < dim; i++)
+	mfcc[t][i] = mfcc[t][i] - mfcc_ave[i];
+    }
+    free(sum);
+    free(mfcc_ave);
   }
-  for(t = 0; t < frame_num; t++){
-    for(i = 0; i < dim; i++)
-      mfcc[t][i] = mfcc[t][i] - mfcc_ave[i];
-  }
-  free(sum);
-  free(mfcc_ave);
 }
 
 /** 
@@ -245,14 +253,29 @@ void CMN(float **mfcc, int frame_num, int dim)
  * @param frame_num [in] number of frames
  * @param para [in] configuration parameters
  */
-void MVN(float **mfcc, int frame_num, Value *para)
+void MVN(float **mfcc, int frame_num, Value *para, CMNWork *c)
 {
   int i, t;
   float *mfcc_mean, *mfcc_sd;
   float x;
   int basedim;
 
-  basedim = para->mfcc_dim; // + (para->c0 ? 1 : 0);
+  basedim = para->mfcc_dim + (para->c0 ? 1 : 0);
+
+  if (c != NULL && c->cmean_init_set) {
+    /* has initial param, use it permanently */
+    for(t = 0; t < frame_num; t++){
+      if (para->cmn) {
+	/* mean normalization (base MFCC only) */
+	for(i = 0; i < basedim; i++) mfcc[t][i] -= c->cmean_init[i];
+      }
+      if (para->cvn) {
+	/* variance normalization (full MFCC) */
+	for(i = 0; i < para->veclen; i++) mfcc[t][i] /= sqrt(c->cvar_init[i]);
+      }
+    }
+    return;
+  }
 
   mfcc_mean = (float *)mycalloc(para->veclen, sizeof(float));
   if (para->cvn) mfcc_sd = (float *)mycalloc(para->veclen, sizeof(float));

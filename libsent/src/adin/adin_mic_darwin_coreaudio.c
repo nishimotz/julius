@@ -29,7 +29,7 @@
  * @author Masatomo Hashimoto
  * @date   Wed Oct 12 11:31:27 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.9 $
  * 
  */
 
@@ -44,7 +44,7 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.6 2009/12/08 01:49:21 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.9 2014/01/05 07:01:01 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
@@ -216,7 +216,7 @@ ConvInputProc(AudioConverterRef inConv,
       ioData->mBuffers[i].mDataByteSize = nBytesProvided;
       
       BufList->mBuffers[i].mData = BufListBackup.mBuffers[i].mData;
-
+      BufList->mBuffers[i].mDataByteSize = BufListBackup.mBuffers[i].mDataByteSize;
     }
 
   }
@@ -654,14 +654,42 @@ int adin_mic_read(void *buffer, int nsamples) {
   return providedSamples;
 }
 
-void adin_mic_pause() {
-  OSStatus status;
+/** 
+ * Function to pause audio input (wait for buffer flush)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_pause()
+{
+  OSStatus status = 0;
 
   if (CoreAudioHasInputDevice && CoreAudioRecordStarted) {
     status = AudioOutputUnitStop(InputUnit);
     CoreAudioRecordStarted = FALSE;
   }
-  return;
+  return (status == 0) ? TRUE : FALSE;
+}
+
+/** 
+ * Function to terminate audio input (disgard buffer)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_terminate()
+{
+  return TRUE;
+}
+/** 
+ * Function to resume the paused / terminated audio input
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_resume()
+{
+  return TRUE;
 }
 
 /** 

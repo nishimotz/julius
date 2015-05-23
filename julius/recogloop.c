@@ -12,14 +12,14 @@
  * @author Akinobu Lee
  * @date   Sun Sep 02 21:12:52 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.7 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -35,13 +35,14 @@ main_recognition_stream_loop(Recog *recog)
   int ret;
   FILE *mfclist;
   static char speechfilename[MAXPATHLEN];	/* pathname of speech file or MFCC file */
+  char *p;
   
   jconf = recog->jconf;
 
   /* reset file count */
   file_counter = 0;
   
-  if (jconf->input.speech_input == SP_MFCFILE) {
+  if (jconf->input.speech_input == SP_MFCFILE || jconf->input.speech_input == SP_OUTPROBFILE) {
     if (jconf->input.inputlist_filename != NULL) {
       /* open filelist for mfc input */
       if ((mfclist = fopen(jconf->input.inputlist_filename, "r")) == NULL) { /* open error */
@@ -63,9 +64,16 @@ main_recognition_stream_loop(Recog *recog)
     /*********************/
     /* open input stream */
     /*********************/
-    if (jconf->input.speech_input == SP_MFCFILE) {
+    if (jconf->input.speech_input == SP_MFCFILE || jconf->input.speech_input == SP_OUTPROBFILE) {
       /* from MFCC parameter file (in HTK format) */
-      VERMES("### read analyzed parameter\n");
+      switch(jconf->input.speech_input) {
+      case SP_MFCFILE:
+	VERMES("### read analyzed parameter\n");
+	break;
+      case SP_OUTPROBFILE:
+	VERMES("### read output probabilities\n");
+	break;
+      }
       if (jconf->input.inputlist_filename != NULL) {	/* has filename list */
 	do {
 	  if (getl_fp(speechfilename, MAXPATHLEN, mfclist) == NULL) {
@@ -78,7 +86,15 @@ main_recognition_stream_loop(Recog *recog)
 	  }
 	} while (speechfilename[0] == '\0' || speechfilename[0] == '#');
       } else {
-	if (get_line_from_stdin(speechfilename, MAXPATHLEN, "enter MFCC filename->") == NULL) {
+	switch(jconf->input.speech_input) {
+	case SP_MFCFILE:
+	  p = get_line_from_stdin(speechfilename, MAXPATHLEN, "enter MFCC filename->");
+	  break;
+	case SP_OUTPROBFILE:
+	  p = get_line_from_stdin(speechfilename, MAXPATHLEN, "enter OUTPROB filename->");
+	  break;
+	}
+	if (p == NULL) {
 	  fprintf(stderr, "%d files processed\n", file_counter);
 #ifdef REPORT_MEMORY_USAGE
 	  print_mem();

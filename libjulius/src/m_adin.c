@@ -12,13 +12,13 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.17 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -67,9 +67,6 @@ adin_select(ADIn *a, int source, int dev)
 #ifdef USE_MIC
   case SP_MIC:
     /* microphone input */
-    a->ad_resume 	   = NULL;
-    a->ad_pause 	   = NULL;
-    a->ad_terminate 	   = NULL;
     a->silence_cut_default = TRUE;
     a->enable_thread 	   = TRUE;
     switch(dev) {
@@ -79,6 +76,9 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_end 	     = adin_mic_end;
       a->ad_read 	     = adin_mic_read;
       a->ad_input_name	     = adin_mic_input_name;
+      a->ad_pause	     = adin_mic_pause;
+      a->ad_terminate	     = adin_mic_terminate;
+      a->ad_resume	     = adin_mic_resume;
       break;
 #ifdef HAS_ALSA
     case SP_INPUT_ALSA:
@@ -87,6 +87,9 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_end 	     = adin_alsa_end;
       a->ad_read 	     = adin_alsa_read;
       a->ad_input_name	     = adin_alsa_input_name;
+      a->ad_pause	     = NULL;
+      a->ad_terminate	     = NULL;
+      a->ad_resume	     = NULL;
       break;
 #endif
 #ifdef HAS_OSS
@@ -96,6 +99,9 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_end 	     = adin_oss_end;
       a->ad_read 	     = adin_oss_read;
       a->ad_input_name	     = adin_oss_input_name;
+      a->ad_pause	     = NULL;
+      a->ad_terminate	     = NULL;
+      a->ad_resume	     = NULL;
       break;
 #endif
 #ifdef HAS_ESD
@@ -105,6 +111,21 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_end 	     = adin_esd_end;
       a->ad_read 	     = adin_esd_read;
       a->ad_input_name	     = adin_esd_input_name;
+      a->ad_pause	     = NULL;
+      a->ad_terminate	     = NULL;
+      a->ad_resume	     = NULL;
+      break;
+#endif
+#ifdef HAS_PULSEAUDIO
+    case SP_INPUT_PULSEAUDIO:
+      a->ad_standby 	     = adin_pulseaudio_standby;
+      a->ad_begin 	     = adin_pulseaudio_begin;
+      a->ad_end 	     = adin_pulseaudio_end;
+      a->ad_read 	     = adin_pulseaudio_read;
+      a->ad_input_name	     = adin_pulseaudio_input_name;
+      a->ad_pause	     = NULL;
+      a->ad_terminate	     = NULL;
+      a->ad_resume	     = NULL;
       break;
 #endif
     default:
@@ -154,6 +175,7 @@ adin_select(ADIn *a, int source, int dev)
     a->enable_thread 	   = FALSE;
     break;
   case SP_MFCFILE:
+  case SP_OUTPROBFILE:
     /* MFC_FILE is not waveform, so special handling on main routine should be done */
     break;
   default:

@@ -12,14 +12,14 @@
  * @author Akinobu Lee
  * @date   Fri Aug  3 14:09:39 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.6 $
  * 
  */
 
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -125,6 +125,7 @@ new_param()
   new->mroot = NULL;
   new->parvec = NULL;
   new->samplenum_alloc = 0;
+  new->is_outprob = FALSE;
   param_init_content(new);
   return(new);
 }

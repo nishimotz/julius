@@ -1,14 +1,14 @@
 /*
- * Copyright (c) 2002-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 2002-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2002-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 /*
  * mkss --- compute average spectrum of mic input for SS in Julius
  *
- * $Id: mkss.c,v 1.4 2009/07/07 15:15:24 sumomo Exp $
+ * $Id: mkss.c,v 1.9 2013/12/19 16:26:22 sumomo Exp $
  *
  */
 
@@ -32,7 +32,7 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
 {
   fprintf(stderr, "mkss --- compute averate spectrum of mic input for SS\n");
   fprintf(stderr, "Usage: mkss [options..] filename\n");
-  fprintf(stderr, "    [-freq frequency]    sampling freq in Hz   (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(stderr, "    [-freq frequency]    sampling freq in Hz   (%d)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "    [-len msec]          record length in msec (%d)\n", slen);
   fprintf(stderr, "    [-fsize samplenum]   window size           (%d)\n", jconf->am_root->analysis.para_default.framesize);
   fprintf(stderr, "    [-fshift samplenum]  frame shift           (%d)\n", jconf->am_root->analysis.para_default.frameshift);
@@ -190,7 +190,7 @@ main(int argc, char *argv[])
 
   /* close device */
   adin_end(recog->adin);
-  fprintf(stderr, "\n%d samples (%d bytes, %.1f sec) recorded\n", samples, samples * sizeof(SP16), (float)samples / (float)sfreq);
+  fprintf(stderr, "\n%d samples (%lu bytes, %.1f sec) recorded\n", samples, samples * sizeof(SP16), (float)samples / (float)sfreq);
 
   /* compute SS */
   fprintf(stderr, "compute SS:\n");

@@ -48,13 +48,13 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 02:52:52 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.7 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -81,6 +81,7 @@ typedef struct {
   short veclen_alloc;		///< Allocated vector length of a sample
   unsigned int samplenum_alloc;	///< Alllocated number of samples
   BMALLOC_BASE *mroot;		///< Pointer for block memory allocation
+  boolean is_outprob;		///< TRUE if this is outprob vector
 } HTK_Param;
 
 /**

@@ -12,13 +12,13 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:46:49 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.12 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -413,6 +413,9 @@ result_pass2(Recog *recog, void *dummy)
       case J_RESULT_STATUS_REJECT_SHORT:
 	module_send(module_sd, "<REJECTED REASON=\"too short input\"");
 	break;
+      case J_RESULT_STATUS_REJECT_LONG:
+	module_send(module_sd, "<REJECTED REASON=\"too long input\"");
+	break;
       case J_RESULT_STATUS_FAIL:
 	module_send(module_sd, "<RECOGFAIL");
 	break;
@@ -441,6 +444,12 @@ result_pass2(Recog *recog, void *dummy)
       
       module_send(module_sd, "  <SHYPO RANK=\"%d\"", n+1);
       if (out2_score) {
+#ifdef USE_MBR
+	if(r->config->mbr.use_mbr == TRUE){
+
+	  module_send(module_sd, " MBRSCORE=\"%f\"", s->score_mbr);
+	}
+#endif
 	module_send(module_sd, " SCORE=\"%f\"", s->score);
 	if (r->lmtype == LM_PROB) {
 	  if (separate_score_flag) {

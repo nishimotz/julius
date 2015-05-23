@@ -12,13 +12,13 @@
  * @author Akinobu Lee
  * @date   Sun Oct 28 18:06:20 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.12 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -58,7 +58,7 @@ j_mfcccalc_new(JCONF_AM *amconf)
     mfcc->htk_loaded = (amconf->analysis.para_htk.loaded == 1) ? TRUE : FALSE;
     mfcc->wrk = WMP_work_new(mfcc->para);
     if (mfcc->wrk == NULL) {
-      jlog("ERROR: j_mfcccalc_new: failed to initialize MFCC computation\n");
+      jlog("ERROR: j_mfcccalc_new: failed to initialize feature computation\n");
       return NULL;
     }
     mfcc->cmn.load_filename = amconf->analysis.cmnload_filename;
@@ -160,11 +160,11 @@ j_process_am_new(Recog *recog, JCONF_AM *amconf)
 void
 j_process_am_free(PROCESS_AM *am)
 {
+  /* HMMWork hmmwrk */
+  outprob_free(&(am->hmmwrk));
   if (am->hmminfo) hmminfo_free(am->hmminfo);
   if (am->hmm_gs) hmminfo_free(am->hmm_gs);
   /* not free am->jconf  */
-  /* HMMWork hmmwrk */
-  outprob_free(&(am->hmmwrk));
   free(am);
 }
 
@@ -300,6 +300,10 @@ j_recogprocess_free(RecogProcess *process)
   /* not free jconf, am, lm here */
   /* free part of StackDecode work area */
   wchmm_fbs_free(process);
+  /* free cache */
+  if (process->lmtype == LM_PROB) {
+    max_successor_cache_free(process->wchmm);
+  }
   /* free wchmm */
   if (process->wchmm) wchmm_free(process->wchmm);
   /* free backtrellis */
@@ -330,6 +334,7 @@ j_jconf_am_new()
 {
   JCONF_AM *new;
   new = (JCONF_AM *)mymalloc(sizeof(JCONF_AM));
+  memset(new, 0, sizeof(JCONF_AM));
   jconf_set_default_values_am(new);
   new->next = NULL;
   return new;
@@ -434,6 +439,7 @@ j_jconf_lm_new()
 {
   JCONF_LM *new;
   new = (JCONF_LM *)mymalloc(sizeof(JCONF_LM));
+  memset(new, 0, sizeof(JCONF_LM));
   jconf_set_default_values_lm(new);
   new->next = NULL;
   return new;
@@ -457,6 +463,21 @@ j_jconf_lm_new()
 void
 j_jconf_lm_free(JCONF_LM *lmconf)
 {
+  JCONF_LM_NAMELIST *nl, *nltmp;
+  nl = lmconf->additional_dict_files;
+  while (nl) {
+    nltmp = nl->next;
+    free(nl->name);
+    free(nl);
+    nl = nltmp;
+  }
+  nl = lmconf->additional_dict_entries;
+  while (nl) {
+    nltmp = nl->next;
+    free(nl->name);
+    free(nl);
+    nl = nltmp;
+  }
   free(lmconf);
 }
 
@@ -536,6 +557,7 @@ j_jconf_search_new()
 {
   JCONF_SEARCH *new;
   new = (JCONF_SEARCH *)mymalloc(sizeof(JCONF_SEARCH));
+  memset(new, 0, sizeof(JCONF_SEARCH));
   jconf_set_default_values_search(new);
   new->next = NULL;
   return new;
@@ -645,6 +667,7 @@ j_jconf_new()
 
   /* allocate memory */
   jconf = (Jconf *)mymalloc(sizeof(Jconf));
+  memset(jconf, 0, sizeof(Jconf));
   /* set default values */
   jconf_set_default_values(jconf);
 
@@ -667,6 +690,7 @@ j_jconf_new()
   jconf->searchnow = jconf->search_root;
   /* set gmm am jconf */
   jconf->gmm = NULL;
+  jconf->outprob_outfile = NULL;
 
   return(jconf);
 }
@@ -718,6 +742,11 @@ j_jconf_free(Jconf *jconf)
     j_jconf_search_free(sc);
     sc = sctmp;
   }
+  if (jconf->outprob_outfile) {
+    free(jconf->outprob_outfile);
+    jconf->outprob_outfile = NULL;
+  }
+
   free(jconf);
 }
 

@@ -23,7 +23,7 @@ DESCRIPTION
 
 OPTIONS
         -o  outfile
-          出力ファイル名を指定する．
+           出力ファイル名を指定する．
 
 EXAMPLES
        foo.dfa を最小化して bar.dfa に 保存する．
@@ -33,17 +33,17 @@ SEE ALSO
         mkdfa.pl ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1991-2008 京都大学 河原研究室
+       Copyright (c) 1991-2013 京都大学 河原研究室
 
        Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
 
-       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+       Copyright (c) 2000-2005 奈良先端科学技術大学院大学 鹿野研究室
 
-       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
+       Copyright (c) 2005-2013 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-                                  10/02/2008                   DFA_MINIMIZE(1)
+                                  19/12/2013                   DFA_MINIMIZE(1)

@@ -129,6 +129,11 @@ If you want to read them in MSVC++, convert them to UTF-8.
 6.  History
 ==============
 
+2010/12 (ver.4.1.5.1)
+
+	Small fix relating the license issue.
+	Fix header.
+
 2009/11 (ver.4.1.3)
 
 	INITIAL RELEASE.

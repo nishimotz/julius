@@ -19,13 +19,13 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.16 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -62,8 +62,8 @@
 static char buf[MAXLINELEN];	///< Local work area for input text processing
 static char bufbak[MAXLINELEN];	///< Local work area for debug message
 
-static char trbuf[3][20];	///< Local buffer for triphone convertion
-static char chbuf[30];	     ///< Another local buffer for triphone convertion
+static char trbuf[3][MAX_HMMNAME_LEN];	///< Local buffer for triphone convertion
+static char chbuf[MAX_HMMNAME_LEN];	     ///< Another local buffer for triphone convertion
 static char nophone[1];		///< Local buffer to indicate 'no phone'
 static int  trp_l;		///< Triphone cycle index
 static int  trp;		///< Triphone cycle index
@@ -375,9 +375,8 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
 {
   char *ptmp, *lp = NULL, *p;
   static char cbuf[MAX_HMMNAME_LEN];
-  static HMM_Logical **tmpwseq = NULL;
-  static int tmpmaxlen;
-  int len;
+  HMM_Logical **tmpwseq;
+  int i, len;
   HMM_Logical *tmplg;
   boolean pok;
   int vnum;
@@ -387,10 +386,11 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
   if (strmatch(buf, "DICEND")) return FALSE;
 
   /* allocate temporal work area for the first call */
-  if (tmpwseq == NULL) {
-    tmpmaxlen = PHONEMELEN_STEP;
-    tmpwseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * tmpmaxlen);
+  if (winfo->work == NULL) {
+    winfo->work_num = PHONEMELEN_STEP;
+    winfo->work = (void *)mybmalloc2(sizeof(HMM_Logical *) * winfo->work_num, &(winfo->mroot));
   }
+  tmpwseq = (HMM_Logical **)winfo->work;
 
   /* backup whole line for debug output */
   strcpy(bufbak, buf);
@@ -489,6 +489,50 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
     return TRUE;
   }
   winfo->woutput[vnum] = strcpy((char *)mybmalloc2(strlen(ptmp)+1, &(winfo->mroot)), ptmp);
+
+#ifdef USE_MBR
+  /* just move pointer to next token */
+  if ((ptmp = mystrtok_movetonext(NULL, " \t\n")) == NULL) {
+    jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+    winfo->errnum++;
+    *ok_flag = FALSE;
+    return TRUE;
+  }
+
+  if (ptmp[0] == ':') {        /* Word weight (use minimization WWER on MBR) */
+
+    /* Word weight (use minimization WWER on MBR) */
+    /* format: (classname @classprob) wordname [output] :weight phoneseq */
+    /* format: :%f (linear scale) */
+    /* if ":" not found, it means weight == 1.0 (same minimization WER) */
+
+    if ((ptmp = mystrtok(NULL, " \t\n")) == NULL) {
+      jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+      winfo->errnum++;
+      *ok_flag = FALSE;
+      return TRUE;
+    }
+    if ((ptmp[1] < '0' || ptmp[1] > '9') && ptmp[1] != '.') {     /* not figure after ':' */
+      jlog("Error: voca_load_htkdict: line %d: value after ':' missing, maybe wrong space?\n> %s\n", linenum, bufbak);
+      winfo->errnum++;
+      *ok_flag = FALSE;
+      return TRUE;
+    }
+
+    /* allocate if not yet */
+    if (winfo->weight == NULL) {
+      winfo->weight = (LOGPROB *)mymalloc(sizeof(LOGPROB) * winfo->maxnum);
+      for (i = 0; i < vnum; i++) {
+	winfo->weight[i] = 1.0;
+      }
+    }
+    winfo->weight[vnum] = atof(&(ptmp[1]));
+  }
+  else{
+    if (winfo->weight) 
+      winfo->weight[vnum] = 1.0; /* default, same minimization WER */
+  }
+#endif
     
   /* phoneme sequence */
   if (hmminfo == NULL) {
@@ -509,6 +553,12 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
 	*ok_flag = FALSE;
 	return TRUE;
       }
+      if (strlen(lp) >= MAX_HMMNAME_LEN) {
+	jlog("Error: voca_load_htkdict: line %d: too long phone name: %s\n", linenum, lp);
+	winfo->errnum++;
+	*ok_flag = FALSE;
+	return TRUE;
+      }
       cycle_triphone(lp);
     }
 
@@ -517,7 +567,15 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
       if (do_conv) {
 /*	if (lp != NULL) jlog(" %d%s",len,lp);*/
 	if (lp != NULL) lp = mystrtok(NULL, " \t\n");
-	if (lp != NULL) p = cycle_triphone(lp);
+	if (lp != NULL) {
+	  if (strlen(lp) >= MAX_HMMNAME_LEN) {
+	    jlog("Error: voca_load_htkdict: line %d: too long phone name: %s\n", linenum, lp);
+	    winfo->errnum++;
+	    *ok_flag = FALSE;
+	    return TRUE;
+	  }
+	  p = cycle_triphone(lp);
+	}
 	else p = cycle_triphone_flush();
       } else {
 	p = mystrtok(NULL, " \t\n");
@@ -551,10 +609,12 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
 	pok = FALSE;
       } else {
 	/* found */
-	if (len >= tmpmaxlen) {
+	if (len >= winfo->work_num) {
 	  /* expand wseq area by PHONEMELEN_STEP */
-	  tmpmaxlen += PHONEMELEN_STEP;
-	  tmpwseq = (HMM_Logical **)myrealloc(tmpwseq, sizeof(HMM_Logical *) * tmpmaxlen);
+	  winfo->work_num += PHONEMELEN_STEP;
+	  winfo->work = (void *)mybmalloc2(sizeof(HMM_Logical *) * winfo->work_num, &(winfo->mroot));
+	  memcpy(winfo->work, tmpwseq, sizeof(HMM_Logical *) * (winfo->work_num - PHONEMELEN_STEP));
+	  tmpwseq = (HMM_Logical **)winfo->work;
 	}
 	/* store to temporal buffer */
 	tmpwseq[len] = tmplg;
@@ -651,12 +711,28 @@ voca_append(WORD_INFO *dstinfo, WORD_INFO *srcinfo, int coffset, int woffset)
   for(w=0;w<srcinfo->num;w++) {
     /* copy data */
     dstinfo->wlen[n] = srcinfo->wlen[w];
-    if (srcinfo->wname[w]) dstinfo->wname[n] = strcpy((char *)mybmalloc2(strlen(srcinfo->wname[w])+1, &(dstinfo->mroot)), srcinfo->wname[w]);
-    if (srcinfo->woutput[w]) dstinfo->woutput[n] = strcpy((char *)mybmalloc2(strlen(srcinfo->woutput[w])+1, &(dstinfo->mroot)), srcinfo->woutput[w]);
-    if (srcinfo->wlen[w] > 0) dstinfo->wseq[n] = (HMM_Logical **)mybmalloc2(sizeof(HMM_Logical *) * srcinfo->wlen[w], &(dstinfo->mroot));
-    for(i=0;i<srcinfo->wlen[w];i++) {
-      dstinfo->wseq[n][i] = srcinfo->wseq[w][i];
+    if (srcinfo->wname[w]) {
+      dstinfo->wname[n] = strcpy((char *)mybmalloc2(strlen(srcinfo->wname[w])+1, &(dstinfo->mroot)), srcinfo->wname[w]);
+    } else {
+      dstinfo->wname[n] = NULL;
     }
+    if (srcinfo->woutput[w]) {
+      dstinfo->woutput[n] = strcpy((char *)mybmalloc2(strlen(srcinfo->woutput[w])+1, &(dstinfo->mroot)), srcinfo->woutput[w]);
+    } else {
+      dstinfo->woutput[n] = NULL;
+    }
+    if (srcinfo->wlen[w] > 0) {
+      dstinfo->wseq[n] = (HMM_Logical **)mybmalloc2(sizeof(HMM_Logical *) * srcinfo->wlen[w], &(dstinfo->mroot));
+      for(i=0;i<srcinfo->wlen[w];i++) {
+	dstinfo->wseq[n][i] = srcinfo->wseq[w][i];
+      }
+    } else {
+      dstinfo->wseq[n] = NULL;
+    }
+#ifdef CLASS_NGRAM
+    dstinfo->cprob[n] = srcinfo->cprob[w];
+    if (dstinfo->cprob[n] != 0.0) dstinfo->cwnum++;
+#endif
     dstinfo->is_transparent[n] = srcinfo->is_transparent[w];
     /* offset category ID by coffset */
     dstinfo->wton[n] = srcinfo->wton[w] + coffset;

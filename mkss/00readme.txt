@@ -22,29 +22,29 @@ DESCRIPTION
 
 OPTIONS
         -freq  Hz
-          Sampling frequency in Hz (default: 16,000)
+           Sampling frequency in Hz (default: 16,000)
 
         -len  msec
-          capture length in milliseconds (default: 3000)
+           capture length in milliseconds (default: 3000)
 
         -fsize  sample_num
-          frame size in number of samples (default: 400)
+           frame size in number of samples (default: 400)
 
         -fshift  sample_num
-          frame shift in number of samples (default: 160)
+           frame shift in number of samples (default: 160)
 
 SEE ALSO
         julius ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
+       Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
 
-       Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 
        Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and
        Technology
 
-       Copyright (c) 2005-2008 Julius project team, Nagoya Institute of
+       Copyright (c) 2005-2013 Julius project team, Nagoya Institute of
        Technology
 
 LICENSE
@@ -52,4 +52,4 @@ LICENSE
 
 
 
-                                  10/02/2008                           MKSS(1)
+                                  12/19/2013                           MKSS(1)

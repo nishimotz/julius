@@ -12,15 +12,15 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.14 $
+ * $Revision: 1.23 $
  * 
  */
 
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 /**
@@ -493,6 +493,7 @@ int
 j_open_stream(Recog *recog, char *file_or_dev_name)
 {
   Jconf *jconf;
+  RecogProcess *r;
   char *p;
 
   jconf = recog->jconf;
@@ -519,15 +520,34 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
       /* when using mfc module func, input name should be obtained when called */
       break;
     case SP_MFCFILE:
+    case SP_OUTPROBFILE:
       /* read parameter file */
       param_init_content(recog->mfcclist->param);
       if (rdparam(file_or_dev_name, recog->mfcclist->param) == FALSE) {
 	jlog("ERROR: error in reading parameter file: %s\n", file_or_dev_name);
 	return -1;
       }
-      /* check and strip invalid frames */
-      if (jconf->preprocess.strip_zero_sample) {
-	param_strip_zero(recog->mfcclist->param);
+      switch(jconf->input.speech_input) {
+      case SP_MFCFILE:
+	/* check and strip invalid frames */
+	if (jconf->preprocess.strip_zero_sample) {
+	  param_strip_zero(recog->mfcclist->param);
+	}
+	recog->mfcclist->param->is_outprob = FALSE;
+	break;
+      case SP_OUTPROBFILE:
+	/* mark that this is outprob file */
+	recog->mfcclist->param->is_outprob = TRUE;
+	/* check the size */
+	for(r=recog->process_list;r;r=r->next) {
+	  if (r->am->hmminfo->totalstatenum != recog->mfcclist->param->veclen) {
+	    jlog("ERROR: j_open_stream: outprob vector size != number of states in hmmdefs\n");
+	    jlog("ERROR: j_open_stream: outprob size = %d, #state = %d\n", recog->mfcclist->param->veclen, r->am->hmminfo->totalstatenum);
+	    return -1;
+	  }
+	}
+	jlog("STAT: outprob vector size = %d, samplenum = %d\n", recog->mfcclist->param->veclen, recog->mfcclist->param->samplenum);
+	break;
       }
       /* output frame length */
       callback_exec(CALLBACK_STATUS_PARAM, recog);
@@ -540,7 +560,7 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
     }
   }
 
-  if (jconf->input.speech_input != SP_MFCFILE) {
+  if (jconf->input.speech_input != SP_MFCFILE && jconf->input.speech_input != SP_OUTPROBFILE) {
     /* store current input name using input source specific function */
     p = j_get_current_filename(recog);
     if (p) {
@@ -595,16 +615,13 @@ j_close_stream(Recog *recog)
       recog->adin->end_of_stream = TRUE;
     }
 #endif
-    /* end A/D input */
-    if (adin_end(recog->adin) == FALSE) {
-      return -2;
-    }
   } else {
     switch(jconf->input.speech_input) {
     case SP_MFCMODULE:
       if (mfc_module_end(recog->mfcclist) == FALSE) return -2;
       break;
     case SP_MFCFILE:
+    case SP_OUTPROBFILE:
       /* nothing to do */
       break;
     default:
@@ -716,6 +733,7 @@ j_recognize_stream_core(Recog *recog)
   case INPUT_VECTOR:
     switch(jconf->input.speech_input) {
     case SP_MFCFILE: 
+    case SP_OUTPROBFILE:
       on_the_fly = FALSE;
       break;
     case SP_MFCMODULE:
@@ -957,6 +975,17 @@ j_recognize_stream_core(Recog *recog)
       /******************************************************************/
       /* speech stream has been processed on-the-fly, and 1st pass ends */
       /******************************************************************/
+      if (ret == 1 || ret == 2) {		/* segmented */
+#ifdef HAVE_PTHREAD
+	/* check for audio overflow */
+	if (recog->adin->enable_thread && recog->adin->adinthread_buffer_overflowed) {
+	  jlog("Warning: input buffer overflow: some input may be dropped, so disgard the input\n");
+	  result_error(recog, J_RESULT_STATUS_BUFFER_OVERFLOW);
+	  /* skip 2nd pass */
+	  goto end_recog;
+	}
+#endif
+      }
       /* last procedure of 1st-pass */
       if (RealTimeParam(recog) == FALSE) {
 	jlog("ERROR: fatal error occured, program terminates now\n");
@@ -969,6 +998,12 @@ j_recognize_stream_core(Recog *recog)
 	goto end_recog;
       }
 #endif
+
+      /* output segment status */
+      if (recog->adin->adin_cut_on && (jconf->input.speech_input == SP_RAWFILE || jconf->input.speech_input == SP_STDIN)) {
+	seclen = (float)recog->adin->last_trigger_sample / (float)jconf->input.sfreq;
+	jlog("STAT: triggered: [%d..%d] %.2fs from %02d:%02d:%02.2f\n", recog->adin->last_trigger_sample, recog->adin->last_trigger_sample + recog->adin->last_trigger_len, (float)(recog->adin->last_trigger_len) / (float)jconf->input.sfreq, (int)(seclen / 3600), (int)(seclen / 60), seclen - (int)(seclen / 60) * 60);
+      }
 
       /* execute callback for 1st pass result */
       /* result.status <0 must be skipped inside callback */
@@ -997,9 +1032,15 @@ j_recognize_stream_core(Recog *recog)
 
       if (jconf->input.type == INPUT_VECTOR) {
 	/***********************/
-	/* feature vector input */
+	/* vector input */
 	/************************/
-	if (jconf->input.speech_input == SP_MFCFILE) {
+	if (jconf->input.speech_input == SP_OUTPROBFILE) {
+	  /**********************************/
+	  /* state output probability input */
+	  /**********************************/
+	  /* AM is dummy, so skip parameter type check */
+	  ret = 0;
+	} else if (jconf->input.speech_input == SP_MFCFILE) {
 	  /************************/
 	  /* parameter file input */
 	  /************************/
@@ -1068,6 +1109,14 @@ j_recognize_stream_core(Recog *recog)
 	      goto end_recog;
 	    }
 	  }
+	  /* when using "-rejectlong", and input was longer than specified,
+	     terminate the input here */
+	  if (recog->jconf->reject.rejectlonglen >= 0) {
+	    if (seclen * 1000.0 >= recog->jconf->reject.rejectlonglen) {
+	      result_error(recog, J_RESULT_STATUS_REJECT_LONG);
+	      goto end_recog;
+	    }
+	  }
 	
 	  /**********************************************/
 	  /* acoustic analysis and encoding of speech[] */
@@ -1081,7 +1130,6 @@ j_recognize_stream_core(Recog *recog)
 	    result_error(recog, J_RESULT_STATUS_FAIL);
 	    goto end_recog;
 	  }
-	  
 	  /* if terminate signal has been received, cancel this input */
 	  if (recog->process_want_terminate) {
 	    result_error(recog, J_RESULT_STATUS_TERMINATE);
@@ -1160,12 +1208,39 @@ j_recognize_stream_core(Recog *recog)
 	goto end_recog;
       }
     }
+    if (jconf->reject.rejectlonglen >= 0) {
+      mseclen = (float)recog->mfcclist->param->samplenum * (float)jconf->input.period * (float)jconf->input.frameshift / 10000.0;
+      if (mseclen >= jconf->reject.rejectlonglen) {
+	result_error(recog, J_RESULT_STATUS_REJECT_LONG);
+	goto end_recog;
+      }
+    }
 #ifdef POWER_REJECT
     if (power_reject(recog)) {
       result_error(recog, J_RESULT_STATUS_REJECT_POWER);
       goto end_recog;
     }
 #endif
+
+    if (jconf->outprob_outfile) {
+      FILE *fp;
+      char *buf;
+      /* store the whole state outprob cache as a state outprob vector file */
+      if ((fp = fopen(jconf->outprob_outfile, "wb")) != NULL) {
+	for(r=recog->process_list;r;r=r->next) {
+	  if (!r->live) continue;
+	  if (outprob_cache_output(fp, r->wchmm->hmmwrk, recog->mfcclist->param->samplenum) == FALSE) {
+	    jlog("ERROR: error in writing state probabilities to %s\n", jconf->outprob_outfile);
+	    fclose(fp);
+	    goto end_recog;
+	  }
+	}
+	fclose(fp);
+	jlog("STAT: state probabilities written to %s\n", jconf->outprob_outfile);
+      } else{
+	jlog("ERROR: failed to write state probabilities to %s\n", jconf->outprob_outfile);
+      }
+    }
     
     /* if terminate signal has been received, cancel this input */
     if (recog->process_want_terminate) {

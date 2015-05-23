@@ -16,13 +16,13 @@
  * @author Akinobu Lee
  * @date   Fri Oct 27 14:55:00 2006
  *
- * $Revision: 1.8 $
+ * $Revision: 1.13 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -38,6 +38,7 @@
 void
 undef_para(Value *para)
 {
+  para->basetype   = F_ERR_INVALID;
   para->smp_period = -1;
   para->smp_freq   = -1;
   para->framesize  = -1;
@@ -84,6 +85,7 @@ undef_para(Value *para)
 void
 make_default_para(Value *para)
 {
+  para->basetype   = F_MFCC;
   para->smp_period = 625;	/* 16kHz = 625 100ns unit */
   para->smp_freq   = 16000;	/* 16kHz = 625 100ns unit */
   para->framesize  = DEF_FRAMESIZE;
@@ -144,6 +146,7 @@ make_default_para_htk(Value *para)
 void
 apply_para(Value *dst, Value *src)
 {
+  if (dst->basetype   == F_ERR_INVALID) dst->basetype = src->basetype;
   if (dst->smp_period == -1) dst->smp_period = src->smp_period;
   if (dst->smp_freq   == -1) dst->smp_freq = src->smp_freq; 
   if (dst->framesize  == -1) dst->framesize = src->framesize; 
@@ -322,12 +325,14 @@ calc_para_from_header(Value *para, short param_type, short vec_size)
   int dim;
 
   /* decode required parameter extraction types */
+  para->basetype = param_type & F_BASEMASK;
   para->delta = (param_type & F_DELTA) ? TRUE : FALSE;
   para->acc = (param_type & F_ACCL) ? TRUE : FALSE;
   para->energy = (param_type & F_ENERGY) ? TRUE : FALSE;
   para->c0 = (param_type & F_ZEROTH) ? TRUE : FALSE;
   para->absesup = (param_type & F_ENERGY_SUP) ? TRUE : FALSE;
   para->cmn = (param_type & F_CEPNORM) ? TRUE : FALSE;
+
   /* guess MFCC dimension from the vector size and parameter type in the
      acoustic HMM */
   dim = vec_size;
@@ -343,6 +348,16 @@ calc_para_from_header(Value *para, short param_type, short vec_size)
   para->vecbuflen = para->baselen * (1 + (para->delta ? 1 : 0) + (para->acc ? 1 : 0));
   /* set size of final parameter vector */
   para->veclen = para->vecbuflen - (para->absesup ? 1 : 0);
+
+  /* on filter-bank output, also overwrite the number of filterbank */
+  if (para->basetype == F_FBANK || para->basetype == F_MELSPEC) {
+    if (para->fbank_num != dim) {
+      jlog("Warning: number of filterbank is set to %d, but AM requires %d\n", para->fbank_num, dim);
+      jlog("Warning: use value of AM: %d\n", dim);
+      para->fbank_num = dim;
+    }
+  }
+  
 }
 
 /** 
@@ -356,7 +371,21 @@ void
 put_para(FILE *fp, Value *para)
 {
   fprintf(fp, " Acoustic analysis condition:\n");
-  fprintf(fp, "\t       parameter = MFCC");
+  fprintf(fp, "\t       parameter = ");
+  switch(para->basetype) {
+  case F_MFCC:
+    fprintf(fp, "MFCC");
+    break;
+  case F_FBANK:
+    fprintf(fp, "FBANK");
+    break;
+  case F_MELSPEC:
+    fprintf(fp, "MELSPEC");
+    break;
+  default:
+    fprintf(fp, "(UNKNOWN_OR_NOT_SUPPORTED)");
+    break;
+  }
   if (para->c0) fprintf(fp, "_0");
   if (para->energy) fprintf(fp, "_E");
   if (para->delta) fprintf(fp, "_D");
@@ -369,8 +398,8 @@ put_para(FILE *fp, Value *para)
   if (para->absesup) fprintf(fp, ", abs energy supressed");
   if (para->cmn) fprintf(fp, " with CMN");
   fprintf(fp, ")\n");
-  fprintf(fp, "\tsample frequency = %5ld Hz\n", para->smp_freq);
-  fprintf(fp, "\t   sample period = %4ld  (1 = 100ns)\n", para->smp_period);
+  fprintf(fp, "\tsample frequency = %5d Hz\n", para->smp_freq);
+  fprintf(fp, "\t   sample period = %4d  (1 = 100ns)\n", para->smp_period);
   fprintf(fp, "\t     window size = %4d samples (%.1f ms)\n", para->framesize,
            (float)para->smp_period * (float)para->framesize / 10000.0);
   fprintf(fp, "\t     frame shift = %4d samples (%.1f ms)\n", para->frameshift,

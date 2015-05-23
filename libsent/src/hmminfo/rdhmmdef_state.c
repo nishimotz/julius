@@ -12,13 +12,13 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 03:07:44 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.8 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -46,7 +46,7 @@ state_new(HTK_HMM_INFO *hmm)
   for(i=0;i<new->nstream;i++) {
     new->pdf[i] = NULL;
   }
-  new->id = 0;
+  new->id = -1;
   new->next = NULL;
 
   return(new);
@@ -128,6 +128,13 @@ state_read(FILE *fp, HTK_HMM_INFO *hmm)
 
   new = state_new(hmm);
 
+  if (currentis("SID")) {
+    read_token(fp);
+    NoTokErr("missing SID value");
+    new->id = atoi(rdhmmdef_token);
+    read_token(fp);
+  }
+
   if (currentis("NUMMIXES")) {
     if (hmm->tmp_mixnum == NULL) {
       hmm->tmp_mixnum = (int *)mybmalloc2(sizeof(int) * hmm->opt.stream_info.num, &(hmm->mroot));
@@ -188,7 +195,7 @@ get_state_data(FILE *fp, HTK_HMM_INFO *hmm)
 {
   HTK_HMM_State *tmp;
 
-  if (currentis("NUMMIXES")||currentis("SWEIGHTS")||currentis("~w")||currentis("STREAM")||currentis("MIXTURE")||currentis("TMIX")||currentis("MEAN")||currentis("~m")||currentis("RCLASS")) {
+  if (currentis("SID")||currentis("NUMMIXES")||currentis("SWEIGHTS")||currentis("~w")||currentis("STREAM")||currentis("MIXTURE")||currentis("TMIX")||currentis("MEAN")||currentis("~m")||currentis("RCLASS")) {
     /* definition: define state data, and return the pointer */
     tmp = state_read(fp, hmm);
     tmp->name = NULL; /* no name */

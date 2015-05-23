@@ -36,13 +36,13 @@
  * @author Akinobu Lee
  * @date   Fri Oct 12 23:14:13 2007
  *
- * $Revision: 1.7 $
+ * $Revision: 1.11 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -386,6 +386,13 @@ decode_end_segmented(Recog *recog)
       ok_p = FALSE;
     }
   }
+  if (recog->jconf->reject.rejectlonglen >= 0) {
+    mseclen = (float)recog->mfcclist->last_time * (float)recog->jconf->input.period * (float)recog->jconf->input.frameshift / 10000.0;
+    if (mseclen >= recog->jconf->reject.rejectlonglen) {
+      last_status = J_RESULT_STATUS_REJECT_LONG;
+      ok_p = FALSE;
+    }
+  }
 
 #ifdef POWER_REJECT
   if (ok_p) {
@@ -521,6 +528,13 @@ decode_end(Recog *recog)
 	mseclen = (float)mfcc->param->samplenum * (float)recog->jconf->input.period * (float)recog->jconf->input.frameshift / 10000.0;
 	if (mseclen < recog->jconf->reject.rejectshortlen) {
 	  last_status = J_RESULT_STATUS_REJECT_SHORT;
+	  ok_p = FALSE;
+	}
+      }
+      if (recog->jconf->reject.rejectlonglen >= 0) {
+	mseclen = (float)mfcc->param->samplenum * (float)recog->jconf->input.period * (float)recog->jconf->input.frameshift / 10000.0;
+	if (mseclen >= recog->jconf->reject.rejectlonglen) {
+	  last_status = J_RESULT_STATUS_REJECT_LONG;
 	  ok_p = FALSE;
 	}
       }

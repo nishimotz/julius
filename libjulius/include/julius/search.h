@@ -29,13 +29,13 @@
  * @author Akinobu Lee
  * @date   Wed Sep 07 07:40:11 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.7 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -130,6 +130,9 @@ typedef struct __node__ {
 
   struct __recogprocess__ *region;		///> Where this node belongs to
 
+#ifdef USE_MBR
+  float score_mbr; ///< MBR score
+#endif
 } NODE;
 
 /*
@@ -163,5 +166,22 @@ seq[seqnum-3] |                      \______             |<--g_prev[0..T-1]
               |                                        \_|
 ===============================================================	      
 */
+
+#ifdef USE_MBR
+/**
+ * <JA>
+ * DPマッチングで使うノード
+ * </JA>
+ * <EN>
+ * Nodes for DP matching
+ * </EN>
+ */
+typedef struct {
+
+  int d; // 最短距離
+  int r; // 遷移元 1=Ins. 2=Del. 3=Sub. or Cor.
+  int c; // r=3とした場合の遷移コスト 1=Sub. 0=Cor.
+} DP;
+#endif
 
 #endif /* __J_SEARCH_H__ */

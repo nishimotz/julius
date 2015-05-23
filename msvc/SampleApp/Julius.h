@@ -2,7 +2,7 @@
  * 
  * cJulius: JuliusLib wrapper class for C++
  *
- * Copyright (c) 2009 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2009-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  *
  * This is a part of the Julius software. 

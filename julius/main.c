@@ -12,14 +12,14 @@
  * @author Akinobu Lee
  * @date   Wed May 18 15:02:55 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.8 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -178,7 +178,7 @@ main(int argc, char *argv[])
   /* if -outfile option specified, callbacks for file output will be
      regitered */
   if (outfile_enabled) {
-    if (jconf->input.speech_input == SP_MFCFILE || jconf->input.speech_input == SP_RAWFILE) {
+    if (jconf->input.speech_input == SP_MFCFILE || jconf->input.speech_input == SP_RAWFILE || jconf->input.speech_input == SP_OUTPROBFILE) {
       setup_output_file(recog, NULL);
     } else {
       fprintf(stderr, "Warning: -outfile works only for file input, disabled now\n");
@@ -194,7 +194,7 @@ main(int argc, char *argv[])
 
   /* initialize and standby the specified audio input source */
   /* for microphone or other threaded input, ad-in thread starts here */
-  if (j_adin_init(recog) == FALSE) return;
+  if (j_adin_init(recog) == FALSE) return -1;
 
   /* output system information to log */
   j_recog_info(recog);

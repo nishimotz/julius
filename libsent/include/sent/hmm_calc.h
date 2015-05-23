@@ -13,13 +13,13 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 14:54:06 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.11 $
  *
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -154,6 +154,8 @@ typedef struct __hmmwork__{
   /* GMS gprune local cache */
   int **gms_last_max_id_list;	///< maximum mixture id of last call for each states
 
+  boolean batch_computation;
+
 } HMMWork;  
 
 
@@ -174,6 +176,7 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
 	     );
 boolean outprob_prepare(HMMWork *wrk, int framenum);
 void outprob_free(HMMWork *wrk);
+void outprob_set_batch_computation(HMMWork *wrk, boolean flag);
 /* outprob.c */
 boolean outprob_cache_init(HMMWork *wrk);
 boolean outprob_cache_prepare(HMMWork *wrk);
@@ -182,6 +185,8 @@ LOGPROB outprob_state(HMMWork *wrk, int t, HTK_HMM_State *stateinfo, HTK_Param *
 void outprob_cd_nbest_init(HMMWork *wrk, int num);
 void outprob_cd_nbest_free(HMMWork *wrk);
 LOGPROB outprob_cd(HMMWork *wrk, int t, CD_State_Set *lset, HTK_Param *param);
+boolean outprob_cache_output(FILE *fp, HMMWork *wrk, int framenum);
+
 /* gms.c */
 boolean gms_init(HMMWork *wrk);
 boolean gms_prepare(HMMWork *wrk, int framelen);

@@ -20,13 +20,13 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 18:12:30 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.12 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -46,6 +46,8 @@
 #include <sent/stddefs.h>
 #include <sent/mfcc.h>
 #include <sent/htk_param.h>
+
+#define MAXBUFLEN  4096		///< Maximum length of a line in the input
 
 /***********************************************************************/
 /** 
@@ -253,7 +255,7 @@ CMN_realtime_new(Value *para, float weight)
   c = (CMNWork *)mymalloc(sizeof(CMNWork));
 
   c->cweight = weight;
-  c->mfcc_dim = para->mfcc_dim; // + (para->c0 ? 1 : 0);
+  c->mfcc_dim = para->mfcc_dim + (para->c0 ? 1 : 0);
   c->veclen = para->veclen;
   c->mean = para->cmn ? TRUE : FALSE;
   c->var = para->cvn ? TRUE : FALSE;
@@ -267,10 +269,18 @@ CMN_realtime_new(Value *para, float weight)
   }
   c->now.mfcc_sum = (float *)mymalloc(sizeof(float) * c->veclen);
   if (c->var) c->now.mfcc_var = (float *)mymalloc(sizeof(float) * c->veclen);
+  if (c->var) c->all.mfcc_var = (float *)mymalloc(sizeof(float) * c->veclen);
 
   c->cmean_init = (float *)mymalloc(sizeof(float) * c->veclen);
   if (c->var) c->cvar_init = (float *)mymalloc(sizeof(float) * c->veclen);
   c->cmean_init_set = FALSE;
+
+  c->loaded_from_file = FALSE;
+
+  if (c->var) {
+    for(i = 0; i < c->veclen; i++) c->all.mfcc_var[i] = 0.0;
+  }
+  c->all.framenum = 0;
 
   return c;
 }
@@ -291,6 +301,7 @@ CMN_realtime_free(CMNWork *c)
   if (c->var) {
     free(c->cvar_init);
     free(c->now.mfcc_var);
+    free(c->all.mfcc_var);
   }
   for(i=0;i<c->clist_max;i++) {
     if (c->var) free(c->clist[i].mfcc_var);
@@ -349,10 +360,8 @@ CMN_realtime(CMNWork *c, float *mfcc)
 	mfcc[d] -= x;
       }
       if (c->var) {
-	/* variance normalization */
-	x = c->now.mfcc_var[d] + c->cweight * c->cvar_init[d];
-	y = (double)c->now.framenum + c->cweight;
-	mfcc[d] /= sqrt(x / y);
+	/* variance normalization (static) */
+	mfcc[d] /= sqrt(c->cvar_init[d]);
       }
     }
   } else {
@@ -417,24 +426,24 @@ CMN_realtime_update(CMNWork *c, HTK_Param *param)
 
   /* compute cepstral mean from now and previous sums up to CPMAX frames */
   for(d=0;d<c->veclen;d++) c->cmean_init[d] = c->now.mfcc_sum[d];
-  if (c->var) {
-    for(d=0;d<c->veclen;d++) c->cvar_init[d] = c->now.mfcc_var[d];
-  }
   frames = c->now.framenum;
   for(i=0;i<c->clist_num;i++) {
     for(d=0;d<c->veclen;d++) c->cmean_init[d] += c->clist[i].mfcc_sum[d];
-    if (c->var) {
-      for(d=0;d<c->veclen;d++) c->cvar_init[d] += c->clist[i].mfcc_var[d];
-    }
     frames += c->clist[i].framenum;
     if (frames >= CPMAX) break;
   }
   for(d=0;d<c->veclen;d++) c->cmean_init[d] /= (float) frames;
-  if (c->var) {
-    for(d=0;d<c->veclen;d++) c->cvar_init[d] /= (float) frames;
-  }
 
   c->cmean_init_set = TRUE;
+
+  /* also compute all and update cvar_init */
+  if (c->loaded_from_file == FALSE && c->var) {
+    for(d = 0; d < c->veclen; d++) {
+      c->all.mfcc_var[d] = (c->all.mfcc_var[d] * c->all.framenum + c->now.mfcc_var[d]) / (c->all.framenum + c->now.framenum);
+    }
+    c->all.framenum += c->now.framenum;
+    for(d=0;d<c->veclen;d++) c->cvar_init[d] = c->all.mfcc_var[d];
+  }
 
   /* expand clist if neccessary */
   if (c->clist_num == c->clist_max && frames < CPMAX) {
@@ -442,7 +451,6 @@ CMN_realtime_update(CMNWork *c, HTK_Param *param)
     c->clist = (CMEAN *)myrealloc(c->clist, sizeof(CMEAN) * c->clist_max);
     for(i=c->clist_num;i<c->clist_max;i++) {
       c->clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*c->veclen);
-      if (c->var) c->clist[i].mfcc_var = (float *)mymalloc(sizeof(float)*c->veclen);
       c->clist[i].framenum = 0;
     }
   }
@@ -455,7 +463,6 @@ CMN_realtime_update(CMNWork *c, HTK_Param *param)
   if (c->var) c->clist[0].mfcc_var = tmp2;
   /* copy now to clist[0] */
   memcpy(c->clist[0].mfcc_sum, c->now.mfcc_sum, sizeof(float) * c->veclen);
-  if (c->var) memcpy(c->clist[0].mfcc_var, c->now.mfcc_var, sizeof(float) * c->veclen);
   c->clist[0].framenum = c->now.framenum;
 
   if (c->clist_num < c->clist_max) c->clist_num++;
@@ -485,33 +492,10 @@ myread(void *buf, size_t unitbyte, int unitnum, FILE *fp)
 }
 
 /** 
- * Write binary with byte swap (assume data is Big Endian)
- * 
- * @param buf [in] data buffer
- * @param unitbyte [in] size of unit in bytes
- * @param unitnum [in] number of units to write
- * @param fd [in] file descriptor
- * 
- * @return TRUE if required number of units are fully written, FALSE if failed.
- */
-static boolean
-mywrite(void *buf, size_t unitbyte, size_t unitnum, int fd)
-{
-#ifndef WORDS_BIGENDIAN
-  swap_bytes(buf, unitbyte, unitnum);
-#endif
-  if (write(fd, buf, unitbyte * unitnum) < unitbyte * unitnum) {
-    return(FALSE);
-  }
-#ifndef WORDS_BIGENDIAN
-  swap_bytes(buf, unitbyte, unitnum);
-#endif
-  return(TRUE);
-}
-
-/** 
  * Load CMN parameter from file.  If the number of MFCC dimension in the
  * file does not match the specified one, an error will occur.
+ *
+ * Format can be either HTK ascii format or binary format (made by Julius older than ver.4.2.3)
  * 
  * @param c [i/o] CMN calculation work area
  * @param filename [in] file name
@@ -523,36 +507,126 @@ CMN_load_from_file(CMNWork *c, char *filename)
 {
   FILE *fp;
   int veclen;
+  char ch[5];
+  char *buf;
 
-  jlog("Stat: wav2mfcc-pipe: reading initial CMN from file \"%s\"\n", filename);
+  jlog("Stat: wav2mfcc-pipe: reading initial cepstral mean/variance from file \"%s\"\n", filename);
   if ((fp = fopen_readfile(filename)) == NULL) {
-    jlog("Error: wav2mfcc-pipe: failed to open\n");
+    jlog("Error: wav2mfcc-pipe: failed to open %s\n", filename);
     return(FALSE);
   }
-  /* read header */
-  if (myread(&veclen, sizeof(int), 1, fp) == FALSE) {
-    jlog("Error: wav2mfcc-pipe: failed to read header\n");
+
+  /* detect file format */
+  if (myread(&ch, sizeof(char), 5, fp) == FALSE) {
+    jlog("Error: wav2mfcc-pipe: failed to read CMN/CVN file\n");
     fclose_readfile(fp);
     return(FALSE);
   }
-  /* check length */
-  if (veclen != c->veclen) {
-    jlog("Error: wav2mfcc-pipe: cepstral dimension mismatch\n");
-    jlog("Error: wav2mfcc-pipe: process = %d, file = %d\n", c->veclen, veclen);
-    fclose_readfile(fp);
-    return(FALSE);
-  }
-  /* read body */
-  if (myread(c->cmean_init, sizeof(float), c->veclen, fp) == FALSE) {
-    jlog("Error: wav2mfcc-pipe: failed to read mean for CMN\n");
-    fclose_readfile(fp);
-    return(FALSE);
-  }
-  if (c->var) {
-    if (myread(c->cvar_init, sizeof(float), c->veclen, fp) == FALSE) {
-      jlog("Error: wav2mfcc-pipe: failed to read variance for CVN\n");
+
+  myfrewind(fp);
+  if (ch[0] == '<' &&
+      (ch[1] == 'C' || ch[1] == 'c') &&
+      (ch[2] == 'E' || ch[2] == 'e') &&
+      (ch[3] == 'P' || ch[3] == 'p') &&
+      (ch[4] == 'S' || ch[4] == 's') ) {
+    /* ascii HTK format (>=4.3) */
+    char *p;
+    int mode;
+    int d, dv, len;
+
+    jlog("Stat: wav2mfcc-pipe: reading HTK-format cepstral vectors\n");
+    buf = (char *)mymalloc(MAXBUFLEN);
+    mode = 0;
+    while(getl(buf, MAXBUFLEN, fp) != NULL) {
+      for (p = mystrtok_quote(buf, "<> \t\r\n"); p; p = mystrtok_quote(NULL, "<> \t\r\n")) {
+	switch(mode){
+	case 0:
+	  if (strmatch(p, "MEAN")) {
+	    mode = 1;
+	  } else if (strmatch(p, "VARIANCE")) {
+	    mode = 3;
+	  }
+	  break;
+	case 1:
+	  len = atof(p);
+	  if (len != c->veclen && len != c->mfcc_dim) {
+	    jlog("Error: wav2mfcc-pipe: cepstral dimension mismatch\n");
+	    jlog("Error: wav2mfcc-pipe: process = %d (%d), file = %d\n", c->veclen, c->mfcc_dim, len);
+	    free(buf); fclose_readfile(fp);
+	    return(FALSE);
+	  }
+	  for (d = 0; d < c->veclen; d++) c->cmean_init[d] = 0.0;
+	  d = 0;
+	  mode = 2;
+	  break;
+	case 2:
+	  if (strmatch(p, "VARIANCE")) {
+	    mode = 3;
+	  } else {
+	    if (d >= len) {
+	      jlog("Error: wav2mfcc-pipe: corrupted data\n");
+	      free(buf); fclose_readfile(fp);
+	      return(FALSE);
+	    }
+	    c->cmean_init[d++] = atof(p);
+	  }
+	  break;
+	case 3:
+	  len = atof(p);
+	  if (len != c->veclen) {
+	    jlog("Error: wav2mfcc-pipe: cepstral dimension mismatch\n");
+	    jlog("Error: wav2mfcc-pipe: process = %d, file = %d\n", c->veclen, len);
+	    free(buf); fclose_readfile(fp);
+	    return(FALSE);
+	  }
+	  dv = 0;
+	  mode = 4;
+	  break;
+	case 4:
+	  if (dv >= len) {
+	    jlog("Error: wav2mfcc-pipe: corrupted data\n");
+	    free(buf); fclose_readfile(fp);
+	    return(FALSE);
+	  }
+	  c->cvar_init[dv++] = atof(p);
+	  break;
+	}
+      }
+    }
+    free(buf);
+    if (d != len || (mode >= 3 && dv != len)) {
+      jlog("Error: wav2mfcc-pipe: corrupted data\n");
       fclose_readfile(fp);
       return(FALSE);
+    }
+  } else {
+    /* binary (<4.3) */
+    jlog("Stat: wav2mfcc-pipe: reading binary-format cepstral vectors\n");
+    /* read header */
+    if (myread(&veclen, sizeof(int), 1, fp) == FALSE) {
+      jlog("Error: wav2mfcc-pipe: failed to read header\n");
+      fclose_readfile(fp);
+      return(FALSE);
+    }
+    /* check length */
+    if (veclen != c->veclen) {
+      jlog("Error: wav2mfcc-pipe: cepstral dimension mismatch\n");
+      jlog("Error: wav2mfcc-pipe: process = %d, file = %d\n", c->veclen, veclen);
+      fclose_readfile(fp);
+      return(FALSE);
+    }
+    /* read body */
+    if (myread(c->cmean_init, sizeof(float), c->veclen, fp) == FALSE) {
+      jlog("Error: wav2mfcc-pipe: failed to read mean for CMN\n");
+      fclose_readfile(fp);
+      return(FALSE);
+    }
+    if (c->var) {
+      if (myread(c->cvar_init, sizeof(float), c->veclen, fp) == FALSE) {
+	jlog("Error: wav2mfcc-pipe: failed to read variance for CVN\n");
+	fclose_readfile(fp);
+	return(FALSE);
+      }
     }
   }
 
@@ -562,7 +636,8 @@ CMN_load_from_file(CMNWork *c, char *filename)
   }
 
   c->cmean_init_set = TRUE;
-  jlog("Stat: wav2mfcc-pipe: read CMN parameter\n");
+  c->loaded_from_file = TRUE;
+  jlog("Stat: wav2mfcc-pipe: finished reading CMN/CVN parameter\n");
 
   return(TRUE);
 }
@@ -578,41 +653,35 @@ CMN_load_from_file(CMNWork *c, char *filename)
 boolean
 CMN_save_to_file(CMNWork *c, char *filename)
 {
-  int fd;
+  FILE *fp;
+  int d;
 
-  jlog("Stat: wav2mfcc-pipe: writing current cepstral data to file \"%s\"\n", filename);
+  /* save in HTK ascii format */
 
-  if ((fd = open(filename, O_CREAT | O_RDWR
-#ifdef O_BINARY
-		 | O_BINARY
-#endif
-		 , 0644)) == -1) {
+  /* open file for writing */
+  if ((fp = fopen_writefile(filename)) == NULL) {
     jlog("Error: wav2mfcc-pipe: failed to open \"%s\" to write current cepstral data\n", filename);
     return(FALSE);
   }
-  /* write header */
-  if (mywrite(&(c->veclen), sizeof(int), 1, fd) == FALSE) {
-    jlog("Error: wav2mfcc-pipe: cannot write header to \"%s\" as current cepstral data\n", filename);
-    close(fd);
-    return(FALSE);
-  }
-  /* write body */
-  if (mywrite(c->cmean_init, sizeof(float), c->veclen, fd) == FALSE) {
-    jlog("Error: wav2mfcc-pipe: cannot write mean to \"%s\" as current cepstral data\n", filename);
-    close(fd);
-    return(FALSE);
+
+  fprintf(fp, "<CEPSNORM> <>\n");
+  /* unlike HTK, full mean will be written for variance estimation */
+  fprintf(fp, "<MEAN> %d\n", c->veclen);
+  for(d=0;d<c->veclen;d++) {
+    fprintf(fp, " %e\n", c->cmean_init[d]);
   }
   if (c->var) {
-    if (mywrite(c->cvar_init, sizeof(float), c->veclen, fd) == FALSE) {
-      jlog("Error: wav2mfcc-pipe: cannot write variance to \"%s\" as current cepstrum\n", filename);
-      close(fd);
-      return(FALSE);
+    fprintf(fp, "<VARIANCE> %d\n", c->veclen);
+    for(d=0;d<c->veclen;d++) {
+      fprintf(fp, " %e\n", c->cvar_init[d]);
     }
   }
 
-  close(fd);
+  fclose_writefile(fp);
 
-  jlog("Stat: wav2mfcc-pipe: current cepstral data written to \"%s\"\n", filename);
+  jlog("Stat: wav2mfcc-pipe: cepstral mean");
+  if (c->var) jlog(" and variance");
+  jlog(" written to \"%s\"\n", filename);
   
   return(TRUE);
 }

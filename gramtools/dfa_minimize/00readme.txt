@@ -21,7 +21,7 @@ DESCRIPTION
 
 OPTIONS
         -o  outfile
-          Output file. If not specified output to standard output.
+           Output file. If not specified output to standard output.
 
 EXAMPLES
        Minimize foo.dfa to bar.dfa:
@@ -31,14 +31,14 @@ SEE ALSO
         mkdfa.pl ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
+       Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
 
-       Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 
        Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and
        Technology
 
-       Copyright (c) 2005-2008 Julius project team, Nagoya Institute of
+       Copyright (c) 2005-2013 Julius project team, Nagoya Institute of
        Technology
 
 LICENSE
@@ -46,4 +46,4 @@ LICENSE
 
 
 
-                                  10/02/2008                   DFA_MINIMIZE(1)
+                                  12/19/2013                   DFA_MINIMIZE(1)

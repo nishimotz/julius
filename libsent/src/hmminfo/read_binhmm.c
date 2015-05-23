@@ -22,12 +22,12 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 05:23:59 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.11 $
  * 
  */
 /*
  * Copyright (c) 2003-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -137,10 +137,22 @@ rd_para(FILE *fp, Value *para)
   jlog("Stat: rd_para: found embedded acoutic parameter (ver.%d)\n", version);
 
   /* read parameters */
-  rdn(fp, &(para->smp_period), sizeof(long), 1);      
-  rdn(fp, &(para->smp_freq), sizeof(long), 1);	
+  rdn(fp, &(para->smp_period), sizeof(int), 1);      
+  rdn(fp, &(para->smp_freq), sizeof(int), 1);
   rdn(fp, &(para->framesize), sizeof(int), 1);        
   rdn(fp, &(para->frameshift), sizeof(int), 1);       
+  /* tweak to read 64bit binhmm with older version (smp_period, smp_freq = 8byte) */
+  if (para->smp_period == 0 && para->framesize == 0 &&
+      para->smp_freq != 0 && para->frameshift != 0) {
+    jlog("Warning: rd_para: smp_period=%d, smp_freq=%d, framesize=%d, frameshift=%d\n", para->smp_period, para->smp_freq, para->framesize, para->frameshift);
+    jlog("Warning: rd_para: wrong values, may be reading binhmm created at 64bit?\n");
+    jlog("Warning: rd_para: try to re-parse values from 64bit to 32bit...\n");
+    para->smp_period = para->smp_freq;
+    para->smp_freq = para->frameshift;
+    rdn(fp, &(para->framesize), sizeof(int), 1);
+    rdn(fp, &(para->frameshift), sizeof(int), 1);
+    jlog("Warning: rd_para: smp_period=%d, smp_freq=%d, framesize=%d, frameshift=%d\n", para->smp_period, para->smp_freq, para->framesize, para->frameshift);
+  }
   rdn(fp, &(para->preEmph), sizeof(float), 1);        
   rdn(fp, &(para->lifter), sizeof(int), 1);           
   rdn(fp, &(para->fbank_num), sizeof(int), 1);        
@@ -848,6 +860,33 @@ read_binhmm(FILE *fp, HTK_HMM_INFO *hmm, boolean gzfile_p, Value *para)
       n++;
     }
     hmm->totalpdfnum = n;
+  }
+
+  /* check state id */
+  {
+    HTK_HMM_State *stmp;
+    int n;
+    boolean has_sid;
+
+    /* check if each state is assigned a valid sid */
+    if (htk_hmm_check_sid(hmm) == FALSE) {
+      jlog("Error: rdhmmdef: error in SID\n");
+      return FALSE;
+    }
+#if 0
+    for (stmp = hmm->ststart; stmp; stmp = stmp->next) {
+      stmp->id = n++;
+    }
+#endif
+  }
+  /* assign ID number for all HTK_HMM_Trans */
+  {
+    HTK_HMM_Trans *ttmp;
+    int n = 0;
+    for (ttmp = hmm->trstart; ttmp; ttmp = ttmp->next) {
+      ttmp->id = n++;
+    }
+    hmm->totaltransnum = n;
   }
 
   /* determine whether this model needs multi-path handling */

@@ -12,13 +12,13 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.12 $
+ * $Revision: 1.25 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -61,10 +61,27 @@ j_output_argument_help(FILE *fp)
 
   fprintf(fp, "\n--- Global Options -----------------------------------------------\n");
 
+  fprintf(fp, "\n Feature Vector Input:\n");
+  fprintf(fp, "    [-input devname]       input source  (default = htkparam)\n");
+  fprintf(fp, "         htkparam/mfcfile  feature vectors in HTK parameter file format\n");
+  fprintf(fp, "         outprob           outprob vectors in HTK parameter file format\n");
+  fprintf(fp, "         vecnet            receive vectors from client (TCP/IP)\n");
+#ifdef ENABLE_PLUGIN
+  if (global_plugin_list) {
+    if ((id = plugin_get_id("fvin_get_optname")) >= 0) {
+      for(p=global_plugin_list[id];p;p=p->next) {
+	func = (FUNC_VOID) p->func;
+	(*func)(buf, (int)64);
+	fprintf(fp, "         %-18s(feature vector input plugin #%d)\n", buf, p->source_id);
+      }
+    }
+  }
+#endif
+  fprintf(fp, "    [-filelist file]    filename of input file list\n");
+
   fprintf(fp, "\n Speech Input:\n");
-  fprintf(fp, "    (Can extract only MFCC based features from waveform)\n");
+  fprintf(fp, "    (Can extract MFCC/FBANK/MELSPEC features from waveform)\n");
   fprintf(fp, "    [-input devname]    input source  (default = htkparam)\n");
-  fprintf(fp, "         htkparam/mfcfile  HTK parameter file\n");
   fprintf(fp, "         file/rawfile      waveform file (%s)\n", SUPPORTED_WAVEFILE_FORMAT);
 #ifdef USE_MIC
   fprintf(fp, "         mic               default microphone device\n");
@@ -76,6 +93,9 @@ j_output_argument_help(FILE *fp)
 # endif
 # ifdef HAS_ESD
   fprintf(fp, "         esd               use ESounD interface\n");
+# endif
+# ifdef HAS_PULSEAUDIO
+  fprintf(fp, "         pulseaudio        use PulseAudio interface\n");
 # endif
 #endif
 #ifdef USE_NETAUDIO
@@ -92,13 +112,6 @@ j_output_argument_help(FILE *fp)
 	fprintf(fp, "         %-18s(adin plugin #%d)\n", buf, p->source_id);
       }
     }
-    if ((id = plugin_get_id("fvin_get_optname")) >= 0) {
-      for(p=global_plugin_list[id];p;p=p->next) {
-	func = (FUNC_VOID) p->func;
-	(*func)(buf, (int)64);
-	fprintf(fp, "         %-18s(feature vector input plugin #%d)\n", buf, p->source_id);
-      }
-    }
   }
 #endif
   fprintf(fp, "    [-filelist file]    filename of input file list\n");
@@ -108,9 +121,11 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-adport portnum]   adinnet port number to listen         (%d)\n", jconf->input.adinnet_port);
   fprintf(fp, "    [-48]               enable 48kHz sampling with internal down sampler (OFF)\n");
   fprintf(fp, "    [-zmean/-nozmean]   enable/disable DC offset removal      (OFF)\n");
+  fprintf(fp, "    [-lvscale]          input level scaling factor (1.0: OFF) (%.1f)\n", jconf->preprocess.level_coef);
   fprintf(fp, "    [-nostrip]          disable stripping off zero samples\n");
   fprintf(fp, "    [-record dir]       record triggered speech data to dir\n");
   fprintf(fp, "    [-rejectshort msec] reject an input shorter than specified\n");
+  fprintf(fp, "    [-rejectlong msec]  reject an input longer than specified\n");
 #ifdef POWER_REJECT
   fprintf(fp, "    [-powerthres value] rejection threshold of average power  (%.1f)\n", jconf->reject.powerthres);
 #endif
@@ -124,6 +139,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-zc zerocrossnum]  zerocross num threshold per sec.      (%d)\n", jconf->detect.zero_cross_num);
   fprintf(fp, "    [-headmargin msec]  header margin length in msec.         (%d)\n", jconf->detect.head_margin_msec);
   fprintf(fp, "    [-tailmargin msec]  tail margin length in msec.           (%d)\n", jconf->detect.tail_margin_msec);
+  fprintf(fp, "    [-chunksize sample] unit length for processing            (%d)\n", jconf->detect.chunk_size);
 
   fprintf(fp, "\n GMM utterance verification:\n");
   fprintf(fp, "    -gmm filename       GMM definition file\n");
@@ -148,6 +164,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-callbackdebug]    (for debug) output message per callback\n");
   fprintf(fp, "    [-check (wchmm|trellis)] (for debug) check internal structure\n");
   fprintf(fp, "    [-check triphone]   triphone mapping check\n");
+  fprintf(fp, "    [-outprobout file]  Output state probabilities to file\n");
   fprintf(fp, "    [-setting]          print engine configuration and exit\n");
   fprintf(fp, "    [-help]             print this message and exit\n");
 
@@ -163,8 +180,8 @@ j_output_argument_help(FILE *fp)
 
   fprintf(fp, "\n Acoustic analysis:\n");
   fprintf(fp, "    [-htkconf file]     load parameters from the HTK Config file\n");
-  fprintf(fp, "    [-smpFreq freq]     sample period (Hz)                    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
-  fprintf(fp, "    [-smpPeriod period] sample period (100ns)                 (%ld)\n", jconf->am_root->analysis.para_default.smp_period);
+  fprintf(fp, "    [-smpFreq freq]     sample period (Hz)                    (%d)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(fp, "    [-smpPeriod period] sample period (100ns)                 (%d)\n", jconf->am_root->analysis.para_default.smp_period);
   fprintf(fp, "    [-fsize sample]     window size (sample)                  (%d)\n", jconf->am_root->analysis.para_default.framesize);
   fprintf(fp, "    [-fshift sample]    frame shift (sample)                  (%d)\n", jconf->am_root->analysis.para_default.frameshift);
   fprintf(fp, "    [-preemph]          pre-emphasis coef.                    (%.2f)\n", jconf->am_root->analysis.para_default.preEmph);
@@ -263,6 +280,8 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-forcedict]        ignore error entry and keep running\n");
   fprintf(fp, "    [-iwspword]         (n-gram) add short-pause word for inter-word CD sp\n");
   fprintf(fp, "    [-iwspentry entry]  (n-gram) word entry for \"-iwspword\" (%s)\n", IWSPENTRY_DEFAULT);
+  fprintf(fp, "    [-adddict dictfile] (n-gram) load extra dictionary\n");
+  fprintf(fp, "    [-addentry entry]   (n-gram) load extra word entry\n");
   
   fprintf(fp, "\n Isolated Word Recognition:\n");
   fprintf(fp, "    -w file[,file2...]  (list of) wordlist file name(s)\n");
@@ -283,6 +302,10 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "\n Search Parameters for the First Pass:\n");
   fprintf(fp, "    [-b beamwidth]      beam width (by state num)             (guessed)\n");
   fprintf(fp, "                        (0: full search, -1: force guess)\n");
+#ifdef SCORE_PRUNING
+  fprintf(fp, "    [-bs score_width]   beam width (by score offset)          (disabled)\n");
+  fprintf(fp, "                        (-1: disable)\n");
+#endif
 #ifdef WPAIR
 # ifdef WPAIR_KEEP_NLIMIT
   fprintf(fp, "    [-nlimit N]         keeps only N tokens on each state     (%d)\n", jconf->search_root->pass1.wpair_keep_nlimit);
@@ -349,6 +372,15 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-walign]           optionally output word alignments\n");
   fprintf(fp, "    [-palign]           optionally output phoneme alignments\n");
   fprintf(fp, "    [-salign]           optionally output state alignments\n");
+
+#ifdef USE_MBR
+  fprintf(fp, "\n Minimum Bayes Risk Decoding:\n");
+  fprintf(fp, "    [-mbr]              enable rescoring sentence on MBR(WER)\n");
+  fprintf(fp, "    [-mbr_wwer]         enable rescoring sentence on MBR(WWER)\n");
+  fprintf(fp, "    [-nombr]            disable rescoring sentence on MBR\n");
+  fprintf(fp, "    [-mbr_weight float float] score and loss func. weight on MBR (%.1f %.1f)\n", jconf->search_root->mbr.score_weight, jconf->search_root->mbr.loss_weight);
+#endif
+
 #ifdef CONFIDENCE_MEASURE
   fprintf(fp, "\n Confidence Score:\n");
 #ifdef CM_MULTIPLE_ALPHA

@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 19:16:43 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /* adin_mic_sp.c --- adin microphone library for spAudio
@@ -137,6 +137,38 @@ adin_mic_read(SP16 *buf, int sampnum)
   nread = spReadAudio(audio, (short *)buf, nread);
   
   return nread;
+}
+
+/** 
+ * Function to pause audio input (wait for buffer flush)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_pause()
+{
+  return TRUE;
+}
+
+/** 
+ * Function to terminate audio input (disgard buffer)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_terminate()
+{
+  return TRUE;
+}
+/** 
+ * Function to resume the paused / terminated audio input
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_resume()
+{
+  return TRUE;
 }
 
 /** 

@@ -17,13 +17,13 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.10 $
+ * $Revision: 1.22 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -77,6 +77,7 @@ jconf_set_default_values(Jconf *j)
   j->detect.tail_margin_msec		= 400;
   j->detect.zero_cross_num		= 60;
   j->detect.silence_cut			= 2; /* accept device default */
+  j->detect.chunk_size			= 1000;
 #ifdef GMM_VAD
   j->detect.gmm_margin			= DEFAULT_GMM_MARGIN;
   j->detect.gmm_uptrigger_thres		= 0.7;
@@ -85,11 +86,13 @@ jconf_set_default_values(Jconf *j)
 
   j->preprocess.strip_zero_sample	= TRUE;
   j->preprocess.use_zmean		= FALSE;
+  j->preprocess.level_coef		= 1.0;
 
   j->reject.gmm_filename		= NULL;
   j->reject.gmm_gprune_num		= 10;
   j->reject.gmm_reject_cmn_string	= NULL;
   j->reject.rejectshortlen		= 0;
+  j->reject.rejectlonglen		= -1;
 #ifdef POWER_REJECT
   j->reject.powerthres			= POWER_REJECT_DEFAULT_THRES;
 #endif
@@ -100,6 +103,7 @@ jconf_set_default_values(Jconf *j)
 
   j->optsection				= JCONF_OPT_DEFAULT;
   j->optsectioning			= TRUE;
+  j->outprob_outfile			= NULL;
 }
 
 /** 
@@ -194,6 +198,8 @@ jconf_set_default_values_lm(JCONF_LM *j)
   strcpy(j->wordrecog_tail_silence_model_name, "silE");
   j->wordrecog_silence_context_name[0] = '\0';
   strcpy(j->unknown_name, UNK_WORD_DEFAULT); // or UNK_WORD_DEFAULT2
+  j->additional_dict_files		= NULL;
+  j->additional_dict_entries		= NULL;
 }
 
 /** 
@@ -233,6 +239,9 @@ jconf_set_default_values_search(JCONF_SEARCH *j)
   j->lmp.lmp_specified			= FALSE;
 
   j->pass1.specified_trellis_beam_width	= -1;
+#ifdef SCORE_PRUNING
+  j->pass1.score_pruning_width		= -1.0;
+#endif
 #if defined(WPAIR) && defined(WPAIR_KEEP_NLIMIT)
   j->pass1.wpair_keep_nlimit		= 3;
 #endif
@@ -308,6 +317,13 @@ jconf_set_default_values_search(JCONF_SEARCH *j)
   j->sw.wchmm_check_flag		= FALSE;
   j->sw.start_inactive			= FALSE;
   j->sw.fallback_pass1_flag		= FALSE;
+
+#ifdef USE_MBR
+  j->mbr.use_mbr = FALSE;
+  j->mbr.use_word_weight = FALSE;
+  j->mbr.score_weight = 0.1;
+  j->mbr.loss_weight = 1.0;
+#endif
 }
 
 /* end of file */

@@ -3,10 +3,10 @@
 	「大語彙連続音声認識エンジン Julius」
 			利用許諾書
 
-  Copyright (c)   1991-2010 京都大学 河原研究室
+  Copyright (c)   1991-2013 京都大学 河原研究室
   Copyright (c)   1997-2000 情報処理振興事業協会(IPA)
   Copyright (c)   2000-2005 奈良先端科学技術大学院大学 鹿野研究室
-  Copyright (c)   2005-2010 名古屋工業大学 Julius開発チーム
+  Copyright (c)   2005-2013 名古屋工業大学 Julius開発チーム
 
 ----------------------------------------------------------------------------
 
@@ -40,10 +40,10 @@ Julius開発チームで開発されています。1997年度から3年間、情報処理振興事
 なくそのまま表示し添付しなければなりません。
 
 			記
-  Copyright (c) 1991-2010 京都大学 河原研究室
+  Copyright (c) 1991-2013 京都大学 河原研究室
   Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
   Copyright (c) 2000-2005 奈良先端科学技術大学院大学 鹿野研究室
-  Copyright (c) 2005-2010 名古屋工業大学 Julius開発チーム
+  Copyright (c) 2005-2013 名古屋工業大学 Julius開発チーム
 
 3. 本ソフトウェアを利用して得られた知見に関して発表を行なう際には、
 「大語彙連続音声認識エンジン Julius」を利用したことを明記して下さい。
@@ -57,12 +57,12 @@ Julius開発チームで開発されています。1997年度から3年間、情報処理振興事
 しないことの保証を含みますが、それに限定されるものではありません。あな
 たを含め本ソフトウェアの利用者は、本ソフトウェアが無保証であることを承
 諾し、本ソフトウェアが無保証であることのリスクを利用者自身で負うものと
-します。裁判所の判決その他何らかの理由によりあなたに課せられた義務と本
-利用条件が相容れないときは、本ソフトウェアを利用してはなりません。本ソ
-フトウェアの利用又は利用できないことに関してあなた及び第三者に生じる通
-常損害、特別損害、直接的、間接的、付随的、派生的な損害（逸失利益を含む）
-一切につき、それが契約、不法行為責任、瑕疵担保責任、製造物責任等いかな
-る国のいかなる法律原因によるかを問わず、賠償しません。
+します。裁判所の判決によりあなたに課せられた義務によってあなたが本利用
+条件に従うことが不可能になったときは、本ソフトウェアを利用してはなりま
+せん。本ソフトウェアの利用又は利用できないことに関してあなた及び第三者
+に生じる通常損害、特別損害、直接的、間接的、付随的、派生的な損害（逸失
+利益を含む）一切につき、それが契約、不法行為責任、瑕疵担保責任、製造物
+責任等いかなる国のいかなる法律原因によるかを問わず、賠償しません。
 
 5. 本ソフトウェアの利用に関しては、日本国の法律を準拠法とし、京都地方
 裁判所を第一審の専属管轄裁判所とします。
@@ -79,10 +79,10 @@ Julius開発チームで開発されています。1997年度から3年間、情報処理振興事
      Large Vocabulary Continuous Speech Recognition Engine Julius
 
 
+ Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
- Copyright (c) 1991-2010 Kawahara Lab., Kyoto University
  Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- Copyright (c) 2005-2010 Julius project team, Nagoya Institute of Technology
+ Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
 
 "Large Vocabulary Continuous Speech Recognition Engine Julius",
 including Julian, is being developed at Kawahara Lab., Kyoto
@@ -129,10 +129,10 @@ whatsoever.
 
                       Form of copyright notice:
 
+ Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
- Copyright (c) 1991-2010 Kawahara Lab., Kyoto University
  Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- Copyright (c) 2005-2010 Julius project team, Nagoya Institute of Technology
+ Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
 
 3. When you publish or present any results by using the Software, you
 must explicitly mention your use of "Large Vocabulary Continuous
@@ -151,9 +151,9 @@ trade secrets or proprietary rights of any third party.  You and every
 other user of the Software hereby acknowledge that the Software is
 licensed without any warranty or guaranty, and assume all risks
 arising out of the absence of any warranty or guaranty.  In the event
-the terms and conditions of this license are inconsistent with the
-obligations imposed upon you by judgment of a court or for any other
-reason, you may not use the Software.
+that obligations imposed upon you by judgment of a court would make it
+impossible for you to comply with the conditions of this license, you
+may not use the Software.
 
 The Licensers shall not have any liability to you or to any third
 party for damages or liabilities of any nature whatsoever arising out

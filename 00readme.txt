@@ -4,11 +4,13 @@
 
                                 Julius
 
+                                                (Rev 4.3.1 2014/01/15)
+                                                (Rev 4.3   2013/12/25)
+                                                (Rev 4.2.3 2013/06/30)
+                                                (Rev 4.2.2 2012/08/01)
+                                                (Rev 4.2.1 2011/12/25)
+                                                (Rev 4.2   2011/05/01)
                                                 (Rev 4.1.5 2010/06/04)
-                                                (Rev 4.1.4 2009/12/25)
-                                                (Rev 4.1.3 2009/11/02)
-                                                (Rev 4.1.2 2009/02/12)
-                                                (Rev 4.1.1 2008/12/13)
                                                 (Rev 4.1   2008/10/03)
                                                 (Rev 4.0.2 2008/05/27)
                                                 (Rev 4.0   2007/12/19)
@@ -17,10 +19,10 @@
                                                 (Rev 2.0   1999/02/20)
                                                 (Rev 1.0   1998/02/20)
 
- Copyright (c) 1991-2010 Kawahara Lab., Kyoto University
+ Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- Copyright (c) 2005-2010 Julius project team, Nagoya Institute of Technology
+ Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  All rights reserved
 ======================================================================
 
@@ -49,21 +51,42 @@ on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
 
 
-What's new in Julius-4.1.5
+What's new in Julius-4.3
 ===========================
 
-The version 4.1.5 is a bug-fix release.  Two bugs are found relating
-search algorithm, word insertion penalty handling on grammar
-recognition and LM score handling of the first word on the second
-pass.  They have been fixed on this release.  If you have been
-encountering unreasonable search failures on the second pass, they 
-may be eased by using the newest version.
+Version 4.3 includes several new features to support on-line DNN-HMM
+decoding: decoding with state output probability vectors ("outprob
+vectors") as input, network-based feature / outprob vector input,
+improved cepstral variance normalization (CVN) for real-time
+recognition, FBANK/MELSPEC feature support and so on.  Also the tool
+"adintool" is now capable of extracting and sending feature vectors in
+real-time via network.
 
-Other bugs are also fixed.  See "Release.txt" for the full list of the
-fixed bugs.
+New options:
+  [-input vecnet]       read feature / outprob vectors from network
+  [-input outprob]      read outprob vectors from HTK parameter file
+  [-outprobout [file]]  save computed outprob vectors to HTK file (for debug)
+
+A short test of network-based feature transmission:
+
+  [server]
+  % julius -C file.jconf -input vecnet
+
+  [client with microphone]
+  % adintool -in mic -out vecnet -paramtype MFCC_E_D_N_Z -veclen 25 -C file.jconf
+
+You should set appropriate feature vector's type and length to
+adintool with "-paramtype TYPE", "-veclen length".  You should also
+set feature extraction parameters as the same as Julius.  Since
+adintool uses JuliusLib for the extraction, it accepts Jconf file and
+setting options as same as Julis.  So the easier way is to apply the
+same Jconf file to adintool with "-C" option as shown above.
+
+See the "Release.txt" file for the full list of updates.
+Run with "-help" to see full list of options.
 
 
-Contents of Julius-4.1.5
+Contents of Julius-4.3
 =========================
 
 	(Documents with suffix "ja" are written in Japanese)
@@ -91,6 +114,7 @@ Contents of Julius-4.1.5
 	plugin/			Several plugin source codes and documentation
 	man/			Unix online manuals
 	msvc/			Files to compile on Microsoft VC++ 2008
+ (new)  dnntools/		Sample programs for dnn and vecnet client
 
 
 Documentation
@@ -107,6 +131,14 @@ License
 Julius is an open-source software provided as is.  For more
 information about the license, please refer to the "LICENSE.txt" file
 included in this archive.
+
+Also see the copyrights in the files:
+
+  gramtools/gram2sapixml/gram2sapixml.pl.in
+  libsent/src/wav2mfcc/wav2mfcc-*.c
+  libsent/src/adin/pa/
+  msvc/portaudio/
+  msvc/zlib/
 
 
 Contact Us

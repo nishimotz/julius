@@ -34,13 +34,13 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 13:35:37 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.8 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -186,7 +186,15 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
     outprob_cd_nbest_init(wrk, hmminfo->cdmax_num);
   }
 
+  wrk->batch_computation = FALSE;
+
   return TRUE;
+}
+
+void
+outprob_set_batch_computation(HMMWork *wrk, boolean flag)
+{
+  wrk->batch_computation = flag;
 }
 
 /** 

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Mon Aug 11 17:05:17 2008
  * 
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 
@@ -184,6 +184,9 @@ fvin_get_optname(char *buf, int buflen)
  * checking the input parameter type against acousitc model, and
  * you can disable the checking by returning "0xffff" to this opcode.
  * 
+ * When opcode = 3, should return 0 if the input vector is feature
+ * vector, and 1 if the input is outprob vector.
+ * 
  * @param opcode [in] requested operation code
  * 
  * @return values required for the opcode as described.
@@ -204,6 +207,8 @@ fvin_get_optname(char *buf, int buflen)
  * エンコードされた値を返す．型チェックを行わない場合は，
  * 0xffff を返すこと．
  *
+ * opcode =3 のとき特徴量ベクトル入力なら 0, 出力確率ベクトルなら1を返す．
+ *
  * @param opcode [in] 要求動作コード (現在 0 のみ実装)
  * 
  * @return opcode ごとに要求された値を返す．
@@ -220,6 +225,8 @@ fvin_get_configuration(int opcode)
   case 2:/* return parameter type specification in HTK format */
     /* return 0xffff to disable checking */
     return(0xffff);
+  case 3:/* return 0 if feature vector input, 1 if outprob vector input */
+    return(0);
   }
 }
 

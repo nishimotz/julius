@@ -12,13 +12,13 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:18:55 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.10 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -90,13 +90,15 @@ print_ngram_info(FILE *fp, NGRAM_INFO *ndata)
   }
   if (ndata->isopen) {
     fprintf(fp, "\t        OOV word = %s(id=%d)\n", ndata->wname[ndata->unk_id],ndata->unk_id);
-    fprintf(fp, "\t        OOV size = %d words in dict\n", ndata->unk_num);
+    if (ndata->unk_num != 0) {
+      fprintf(fp, "\t        OOV size = %d words in dict\n", ndata->unk_num);
+    }
   } else {
     fprintf(fp, "\t        OOV word = none (assume close vocabulary)\n");
   }
   fprintf(fp, "\t    wordset size = %d\n", ndata->max_word_num);
   for(i=0;i<ndata->n;i++) {
-    fprintf(fp, "\t  %d-gram entries = %10lu  (%5.1f MB)", i+1, ndata->d[i].totalnum, get_ngram_tuple_bytes(&(ndata->d[i])) / 1048576.0);
+    fprintf(fp, "\t  %d-gram entries = %10lu  (%5.1f MB)", i+1, (long unsigned int)ndata->d[i].totalnum, get_ngram_tuple_bytes(&(ndata->d[i])) / 1048576.0);
     if (ndata->d[i].bo_wt != NULL && ndata->d[i].totalnum != ndata->d[i].context_num) {
       fprintf(fp, " (%d%% are valid contexts)", ndata->d[i].context_num * 100 / ndata->d[i].totalnum);
     }
@@ -104,7 +106,7 @@ print_ngram_info(FILE *fp, NGRAM_INFO *ndata)
   }
 
   if (ndata->bo_wt_1) {
-    fprintf(fp, "\tLR 2-gram entries= %10lu  (%5.1f MB)\n", ndata->d[1].totalnum,
+    fprintf(fp, "\tLR 2-gram entries= %10lu  (%5.1f MB)\n", (long unsigned int)ndata->d[1].totalnum,
 	    (sizeof(LOGPROB) * ndata->d[1].totalnum + sizeof(LOGPROB) * ndata->d[0].context_num) / 1048576.0);
   }
   fprintf(fp, "\t           pass1 = ");

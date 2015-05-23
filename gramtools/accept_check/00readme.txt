@@ -31,29 +31,29 @@ DESCRIPTION
 
 OPTIONS
         -t
-          Use category name as input instead of word.
+           Use category name as input instead of word.
 
         -s  spname
-          Short-pause word name to be skipped. (default: "sp")
+           Short-pause word name to be skipped. (default: "sp")
 
         -v
-          Debug output.
+           Debug output.
 
 EXAMPLES
        An output for "date" grammar:
 
-          % echo '<s> NEXT SUNDAY </s>' | accept_check date
-          Reading in dictionary...
-          143 words...done
-          Reading in DFA grammar...done
-          Mapping dict item <-> DFA terminal (category)...done
-          Reading in term file (optional)...done
-          27 categories, 143 words
-          DFA has 35 nodes and 71 arcs
-          -----
-          wseq: <s> NEXT SUNDAY </s>
-          cate: NS_B (NEXT|NEXT) (DAYOFWEEK|DAYOFWEEK|DAY|DAY) NS_E
-          accepted
+           % echo '<s> NEXT SUNDAY </s>' | accept_check date
+           Reading in dictionary...
+           143 words...done
+           Reading in DFA grammar...done
+           Mapping dict item <-> DFA terminal (category)...done
+           Reading in term file (optional)...done
+           27 categories, 143 words
+           DFA has 35 nodes and 71 arcs
+           -----
+           wseq: <s> NEXT SUNDAY </s>
+           cate: NS_B (NEXT|NEXT) (DAYOFWEEK|DAYOFWEEK|DAY|DAY) NS_E
+           accepted
 
 
 SEE ALSO
@@ -62,14 +62,14 @@ SEE ALSO
         nextword ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
+       Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
 
-       Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 
        Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and
        Technology
 
-       Copyright (c) 2005-2008 Julius project team, Nagoya Institute of
+       Copyright (c) 2005-2013 Julius project team, Nagoya Institute of
        Technology
 
 LICENSE
@@ -77,4 +77,4 @@ LICENSE
 
 
 
-                                  10/02/2008                   ACCEPT_CHECK(1)
+                                  12/19/2013                   ACCEPT_CHECK(1)

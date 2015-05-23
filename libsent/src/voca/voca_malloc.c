@@ -12,13 +12,13 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 21:33:29 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.11 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -38,6 +38,19 @@ word_info_new()
 
   new = (WORD_INFO *)mymalloc(sizeof(WORD_INFO));
   new->mroot = NULL;
+  new->work = NULL;
+
+  new->wname = NULL;
+  new->woutput = NULL;
+  new->wlen = NULL;
+  new->wton = NULL;
+#ifdef CLASS_NGRAM
+  new->cprob = NULL;
+#endif
+  new->is_transparent = NULL;
+#ifdef USE_MBR
+  new->weight = NULL;
+#endif
 
   return(new);
 }
@@ -53,16 +66,18 @@ word_info_free(WORD_INFO *winfo)
   /* free each word info */
   if (winfo->mroot != NULL) mybfree2(&(winfo->mroot));
   /* free word info */
-  free(winfo->wname);
-  free(winfo->woutput);
-  free(winfo->wseq);
-  free(winfo->wlen);
-  free(winfo->wton);
+  if (winfo->wname != NULL) free(winfo->wname);
+  if (winfo->woutput != NULL) free(winfo->woutput);
+  if (winfo->wlen != NULL) free(winfo->wlen);
+  if (winfo->wton != NULL) free(winfo->wton);
 #ifdef CLASS_NGRAM
-  free(winfo->cprob);
+  if (winfo->cprob != NULL) free(winfo->cprob);
 #endif
-  free(winfo->is_transparent);
+  if (winfo->is_transparent != NULL) free(winfo->is_transparent);
   /* free whole */
+#ifdef USE_MBR
+  if (winfo->weight != NULL) free(winfo->weight);
+#endif
   free(winfo);
 }
 
@@ -123,6 +138,12 @@ winfo_expand(WORD_INFO *winfo)
   winfo->cprob = (LOGPROB *)myrealloc(winfo->cprob, sizeof(LOGPROB)*n);
 #endif
   winfo->is_transparent = (boolean *)myrealloc(winfo->is_transparent, sizeof(boolean)*n);
+
+#ifdef USE_MBR
+  if (winfo->weight)
+    winfo->weight = (LOGPROB *)myrealloc(winfo->weight, sizeof(LOGPROB)*n);
+#endif
+
   winfo->maxnum = n;
 
   return TRUE;

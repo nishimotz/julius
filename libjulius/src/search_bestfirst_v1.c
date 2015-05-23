@@ -92,13 +92,13 @@
  * @author Akinobu Lee
  * @date   Sun Sep 11 23:54:53 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.10 $
  * 
  */
 /*
- * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -397,6 +397,10 @@ newnode(RecogProcess *r)
   }
 
   tmp->region = r;
+
+#ifdef USE_MBR
+  tmp->score_mbr = 0.0;
+#endif
 
   return(tmp);
 }

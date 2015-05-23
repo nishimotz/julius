@@ -42,6 +42,9 @@ DESCRIPTION
        be trained in the same corpus with same parameters (i.e. cut-off
        thresholds), with same vocabulary.
 
+       The character code in binary N-gram can be converted from version 4.2.3
+       or later
+
        The old binary N-gram produced by mkbingram of version 3.x and earlier
        can be used in Julius-4, but you can convert the old version to the new
        version by specifying it as input of current mkbingram by option "-d".
@@ -51,18 +54,25 @@ DESCRIPTION
 
 OPTIONS
         -nlr  forward_ngram.arpa
-          Read in a forward (left-to-right) word N-gram file in ARPA standard
-          format.
+           Read in a forward (left-to-right) word N-gram file in ARPA standard
+           format.
 
         -nrl  backward_ngram.arpa
-          Read in a backward (right-to-left) word N-gram file in ARPA standard
-          format.
+           Read in a backward (right-to-left) word N-gram file in ARPA
+           standard format.
 
         -d  old_bingram_file
-          Read in a binary N-gram file.
+           Read in a binary N-gram file.
+
+        -swap
+           Swap BOS word <s> and EOS word </s> in N-gram.
+
+        -c  from to
+           Convert character code in binary N-gram. ("from", "to" are string
+           that intend character code)
 
        output_bingram_file
-          binary N-gram file name to output.
+           binary N-gram file name to output.
 
 EXAMPLES
        Convert a set of forward and backward N-gram in ARPA format into Julius
@@ -76,14 +86,14 @@ SEE ALSO
         mkbinhmmlist ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
+       Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
 
-       Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 
        Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and
        Technology
 
-       Copyright (c) 2005-2008 Julius project team, Nagoya Institute of
+       Copyright (c) 2005-2013 Julius project team, Nagoya Institute of
        Technology
 
 LICENSE
@@ -91,4 +101,4 @@ LICENSE
 
 
 
-                                  10/02/2008                      MKBINGRAM(1)
+                                  12/19/2013                      MKBINGRAM(1)
