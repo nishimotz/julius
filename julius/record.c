@@ -41,6 +41,7 @@
 
 #include "app.h"
 #include <time.h>
+extern int module_sd;
 
 static char *record_dirname = NULL;
 
@@ -243,6 +244,9 @@ record_sample_close(Recog *recog, void *dummy)
   }
   if (verbose_flag) {
     fprintf(stderr, "recorded to \"%s\" (%lu bytes, %.2f sec.)\n", recordfilename, recordlen * sizeof(SP16), (float)recordlen / (float) recog->jconf->input.sfreq);
+  }
+  if (module_sd != -1) {
+    module_send(module_sd, "<INPUT STATUS=\"RECORDED\" FILENAME=\"%s\" DURATION=\"%.2f\"/>\n.\n", recordfilename, (float)recordlen / (float) recog->jconf->input.sfreq);
   }
 }
 
